@@ -23,7 +23,7 @@ export function NotesPanel({
       : notes.filter((n) => n.tag === filter);
 
   return (
-    <aside className="fixed bottom-0 right-0 top-[44px] z-30 flex w-[240px] flex-col border-l border-border bg-bg-2">
+    <aside className="fixed bottom-0 right-0 top-14 z-30 flex w-[240px] flex-col border-l border-border bg-bg-2">
       <div className="flex h-10 items-center gap-2 border-b border-border px-2">
         <PencilLine className="size-4 text-purple" aria-hidden />
         <span className="text-[14px] font-semibold text-text-1">My notes</span>

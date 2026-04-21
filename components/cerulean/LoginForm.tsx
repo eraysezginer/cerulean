@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { isDemoLoginValid } from "@/lib/demo-auth";
+import { isDemoLoginValid, setDemoSession } from "@/lib/demo-auth";
 
 export function LoginForm() {
   const router = useRouter();
@@ -26,6 +26,7 @@ export function LoginForm() {
       return;
     }
 
+    setDemoSession(email);
     setPending(true);
     window.setTimeout(() => {
       router.push("/dashboard");
