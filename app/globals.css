@@ -2,26 +2,50 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --font-inter: "Inter", system-ui, sans-serif;
+    --background: 0 0% 100%;
+    --foreground: 0 0% 10%;
+    --card: 0 0% 100%;
+    --card-foreground: 0 0% 10%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 0 0% 10%;
+    --primary: 181 85% 25%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 0 0% 96%;
+    --secondary-foreground: 0 0% 10%;
+    --muted: 0 0% 96%;
+    --muted-foreground: 0 0% 44%;
+    --accent: 181 40% 94%;
+    --accent-foreground: 181 85% 25%;
+    --destructive: 0 72% 46%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 0 0% 87%;
+    --input: 0 0% 87%;
+    --ring: 181 85% 25%;
+    --radius: 0.5rem;
+    --teal: #0b7275;
+    --teal-light: #e6f4f4;
+    --red: #cc2222;
+    --red-light: #fff5f5;
+    --amber: #b85a1a;
+    --amber-light: #fff0e8;
+    --green: #1a7a4a;
+    --green-light: #f0faf4;
+    --purple: #544aa0;
+    --purple-light: #f3f1fc;
+    --gold: #ba8c28;
+    --gold-light: #fbf5e6;
   }
-}
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
-}
+  * {
+    @apply border-border;
+  }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
+  body {
+    @apply bg-bg text-text-1 antialiased;
+    font-family: var(--font-inter), system-ui, sans-serif;
+    font-size: 14px;
   }
 }
