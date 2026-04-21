@@ -1,0 +1,18 @@
+[Unit]
+Description=Cerulean Next.js
+After=network.target
+
+[Service]
+Type=simple
+User=cerulean
+Group=cerulean
+WorkingDirectory=/home/cerulean/cerulean
+Environment=NODE_ENV=production
+Environment=PORT=3000
+# next kurulumundan sonra oluşur:
+ExecStart=/home/cerulean/cerulean/node_modules/.bin/next start -p 3000
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target
