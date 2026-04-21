@@ -16,7 +16,11 @@ export default function LoginPage() {
             </p>
             <h1 className="text-page-title text-text-1">Sign in</h1>
             <p className="mt-1 text-body text-text-2">
-              Use your firm credentials. Sessions are private to your tenant.
+              Demo: use the credentials below. Sessions are private to your
+              tenant.
+            </p>
+            <p className="mt-3 rounded-md bg-bg-2 px-3 py-2 font-mono text-[12px] text-text-2">
+              admin@demo.com · 123456
             </p>
           </div>
 
