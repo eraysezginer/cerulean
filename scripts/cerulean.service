@@ -9,7 +9,9 @@ Group=cerulean
 WorkingDirectory=/home/cerulean/cerulean
 Environment=NODE_ENV=production
 Environment=PORT=3000
-ExecStart=/home/cerulean/cerulean/node_modules/.bin/next start -p 3000
+# systemd'da PATH kısıtlı; .bin/next script'i 203/EXEC verebilir — doğrudan node + next giriş noktası
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+ExecStart=/usr/bin/node /home/cerulean/cerulean/node_modules/next/dist/bin/next start -H 0.0.0.0 -p 3000
 Restart=on-failure
 RestartSec=10
 
