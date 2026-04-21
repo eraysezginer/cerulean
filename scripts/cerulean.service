@@ -10,10 +10,10 @@ WorkingDirectory=/home/cerulean/cerulean
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
-# npm, yerel node_modules/.bin/next'i kullanır (dist yolu sürüme göre değişebilir)
-ExecStart=/usr/bin/npm run start -- -H 0.0.0.0 -p 3000
-Restart=on-failure
-RestartSec=10
+# Doğrudan next binary — npm sarmalayıcısı bazen hemen çıkıyor gibi görünür; curl erken 000 verebilir
+ExecStart=/usr/bin/node /home/cerulean/cerulean/node_modules/next/dist/bin/next start -H 0.0.0.0 -p 3000
+Restart=always
+RestartSec=5
 
 [Install]
 WantedBy=multi-user.target
