@@ -8,7 +8,8 @@
     "dev:clean": "npm run clean && next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "deploy:server": "bash scripts/sync-to-server.sh"
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
