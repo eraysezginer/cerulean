@@ -2,9 +2,18 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 import { appendContextNoteToMyNotes } from "@/lib/append-context-note";
 import { logDocumentIngestAudit } from "@/lib/ingest-audit";
+import { getTimelineDocuments } from "@/lib/timeline-store";
 import { createJob } from "@/lib/upload-jobs";
 
 export const runtime = "nodejs";
+
+export async function GET(
+  _request: Request,
+  { params }: { params: { id: string } }
+) {
+  const docs = getTimelineDocuments(params.id);
+  return NextResponse.json(docs);
+}
 
 function slugForAddress(name: string): string {
   return name
