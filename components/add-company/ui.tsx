@@ -62,6 +62,7 @@ export function FormField({
   onChange,
   error,
   type = "text",
+  size = "default",
 }: {
   label: string;
   placeholder?: string;
@@ -70,12 +71,21 @@ export function FormField({
   onChange: (v: string) => void;
   error?: string;
   type?: string;
+  size?: "default" | "lg";
 }) {
+  const isLg = size === "lg";
   return (
     <div>
-      <label className="mb-0.5 flex flex-wrap items-baseline gap-1.5 text-[13px] font-medium text-text-1">
+      <label
+        className={cn(
+          "mb-0.5 flex flex-wrap items-baseline gap-1.5 font-medium text-text-1",
+          isLg ? "text-[15px]" : "text-[13px]"
+        )}
+      >
         {label}
-        {hint ? <span className="text-[12px] font-normal text-text-3">{hint}</span> : null}
+        {hint ? (
+          <span className={cn("font-normal text-text-3", isLg ? "text-[14px]" : "text-[12px]")}>{hint}</span>
+        ) : null}
       </label>
       <input
         type={type}
@@ -83,13 +93,14 @@ export function FormField({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         className={cn(
-          "mt-0.5 h-8 w-full rounded-md border bg-bg px-3 text-[13px] text-text-1 placeholder:text-text-3",
+          "mt-0.5 w-full rounded-md border bg-bg px-3 text-text-1 placeholder:text-text-3",
+          isLg ? "h-9 text-[15px]" : "h-8 text-[13px]",
           `border ${border} focus:outline-none focus:ring-2 focus:ring-teal/30`,
           error && "border-red"
         )}
       />
       {error ? (
-        <p className="mt-0.5 text-[13px] text-red">{error}</p>
+        <p className={cn("mt-0.5 text-red", isLg ? "text-[15px]" : "text-[13px]")}>{error}</p>
       ) : null}
     </div>
   );
@@ -173,26 +184,42 @@ export function MultiSelectChips({
 
 export function SelectDropdown({
   label,
+  hint,
   options,
   value,
   onChange,
   placeholder,
+  size = "default",
 }: {
   label: string;
+  hint?: string;
   options: { value: string; label: string; disabled?: boolean }[];
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
+  size?: "default" | "lg";
 }) {
+  const isLg = size === "lg";
   return (
     <div>
-      <label className="text-[13px] font-medium text-text-1">{label}</label>
+      <label
+        className={cn(
+          "mb-0.5 flex flex-wrap items-baseline gap-1.5 font-medium text-text-1",
+          isLg ? "text-[15px]" : "text-[13px]"
+        )}
+      >
+        {label}
+        {hint ? (
+          <span className={cn("font-normal text-text-3", isLg ? "text-[14px]" : "text-[12px]")}>{hint}</span>
+        ) : null}
+      </label>
       <div className="relative mt-0.5">
         <select
           value={value}
           onChange={(e) => onChange(e.target.value)}
           className={cn(
-            "h-8 w-full appearance-none rounded-md border border-border bg-bg pl-2 pr-8 text-[13px] text-text-1 focus:outline-none focus:ring-2 focus:ring-teal/30"
+            "w-full appearance-none rounded-md border border-border bg-bg pl-2 pr-8 text-text-1 focus:outline-none focus:ring-2 focus:ring-teal/30",
+            isLg ? "h-9 text-[15px]" : "h-8 text-[13px]"
           )}
         >
           {placeholder ? (
@@ -340,15 +367,20 @@ export function TaggedTextarea({
   tagColor,
   value,
   onChange,
+  size = "default",
 }: {
   label: string;
   placeholder: string;
   rows: number;
   tag: string;
-  tagColor: "teal" | "red" | "gold" | "text-3";
+  tagColor: "teal" | "red" | "gold" | "purple" | "text-3";
   value: string;
   onChange: (v: string) => void;
+  size?: "default" | "lg";
 }) {
+  const isLg = size === "lg";
+  const tagText = isLg ? "text-[13px]" : "text-[11px]";
+  const labelText = isLg ? "text-[15px]" : "text-[13px]";
   const tagBg =
     tagColor === "teal"
       ? "bg-teal/[0.1] text-teal"
@@ -356,12 +388,14 @@ export function TaggedTextarea({
         ? "bg-red/[0.1] text-red"
         : tagColor === "gold"
           ? "bg-gold/[0.1] text-gold"
-          : "bg-text-3/10 text-text-3";
+          : tagColor === "purple"
+            ? "bg-purple-light text-purple"
+            : "bg-text-3/10 text-text-3";
   return (
     <div>
       <div className="mb-0.5 flex flex-wrap items-center gap-1.5">
-        <span className="text-[13px] font-medium text-text-1">{label}</span>
-        <span className={cn("rounded-full px-1.5 py-0.5 text-[11px] font-medium", tagBg)}>
+        <span className={cn("font-medium text-text-1", labelText)}>{label}</span>
+        <span className={cn("rounded-full px-1.5 py-0.5 font-medium", tagText, tagBg)}>
           {tag}
         </span>
       </div>
@@ -370,7 +404,10 @@ export function TaggedTextarea({
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
         rows={rows}
-        className="mt-0.5 min-h-[54px] w-full resize-y rounded-md border border-border bg-bg px-2 py-1.5 text-[13px] text-text-1 placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-teal/30"
+        className={cn(
+          "mt-0.5 w-full resize-y rounded-md border border-border bg-bg px-2 py-1.5 text-text-1 placeholder:text-text-3 focus:outline-none focus:ring-2 focus:ring-teal/30",
+          isLg ? "min-h-[60px] text-[15px]" : "min-h-[54px] text-[13px]"
+        )}
       />
     </div>
   );

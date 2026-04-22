@@ -14,6 +14,11 @@ export function PortfolioCompanyNav() {
         isActiveMatch={(p) => /\/companies\/[^/]+\/flags$/.test(p)}
       />
       <NavItem
+        href={`/companies/${companyId}/upload`}
+        label="Company: upload file"
+        isActiveMatch={(p) => /\/companies\/[^/]+\/upload$/.test(p)}
+      />
+      <NavItem
         href={`/companies/${companyId}/behavioral`}
         label="Company: behavioral"
         isActiveMatch={(p) => /\/companies\/[^/]+\/behavioral$/.test(p)}
