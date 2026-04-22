@@ -1,3 +1,5 @@
+import { getRegisteredNotes } from "@/lib/notes-registry";
+
 export type NoteTag = "Commitment" | "Concern" | "Market" | "Context";
 
 export type Note = {
@@ -31,6 +33,8 @@ export const kalderNotes: Note[] = [
 ];
 
 export function getNotesForCompany(companyId: string): Note[] {
+  const reg = getRegisteredNotes(companyId);
+  if (reg) return reg;
   if (companyId === "kalder") return kalderNotes;
   return [
     {

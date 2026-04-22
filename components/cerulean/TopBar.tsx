@@ -107,7 +107,7 @@ function UserMenu({
   );
 }
 
-export function TopBar() {
+export function TopBar({ compact }: { compact?: boolean }) {
   const router = useRouter();
   const [email, setEmail] = useState<string | null | undefined>(undefined);
 
@@ -136,14 +136,27 @@ export function TopBar() {
   const signedIn = email !== undefined && email !== null;
 
   return (
-    <header className="fixed left-0 right-0 top-0 z-50 flex h-14 items-center gap-4 border-b border-border bg-bg/90 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-bg/75">
+    <header
+      className={cn(
+        "fixed left-0 right-0 top-0 z-50 flex items-center gap-4 border-b border-border bg-bg/90 px-4 backdrop-blur-md supports-[backdrop-filter]:bg-bg/75",
+        compact ? "h-11" : "h-14"
+      )}
+    >
       <div className="flex min-w-0 flex-1 items-center gap-3">
         <Link
           href="/dashboard"
           className="group flex shrink-0 items-center gap-2 rounded-lg pr-1 transition-opacity hover:opacity-90"
         >
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-teal to-teal/80 text-white shadow-sm ring-1 ring-teal/20">
-            <Sparkles className="h-4 w-4" strokeWidth={2} />
+          <span
+            className={cn(
+              "flex shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-teal to-teal/80 text-white shadow-sm ring-1 ring-teal/20",
+              compact ? "h-7 w-7" : "h-8 w-8"
+            )}
+          >
+            <Sparkles
+              className={compact ? "h-3.5 w-3.5" : "h-4 w-4"}
+              strokeWidth={2}
+            />
           </span>
           <span className="min-w-0 sm:hidden">
             <span className="block truncate text-[15px] font-semibold leading-tight text-teal">
@@ -174,7 +187,10 @@ export function TopBar() {
       <div className="flex shrink-0 items-center justify-end">
         {email === undefined ? (
           <span
-            className="h-10 w-[200px] max-w-[50vw] animate-pulse rounded-full bg-bg-2"
+            className={cn(
+              "w-[200px] max-w-[50vw] animate-pulse rounded-full bg-bg-2",
+              compact ? "h-8" : "h-10"
+            )}
             aria-hidden
           />
         ) : signedIn ? (

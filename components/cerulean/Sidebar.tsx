@@ -4,9 +4,13 @@ import { NavItem } from "./NavItem";
 import { PortfolioCompanyNav } from "./PortfolioCompanyNav";
 import { SidebarDefaultCompanyLabel } from "./SidebarDefaultCompanyLabel";
 
-export function Sidebar() {
+export function Sidebar({ compactTop }: { compactTop?: boolean }) {
   return (
-    <aside className="fixed bottom-0 left-0 top-14 z-40 flex w-[220px] flex-col overflow-hidden border-r border-border bg-gradient-to-b from-bg-2 to-bg-2/95">
+    <aside
+      className={`fixed bottom-0 left-0 z-40 flex w-[220px] flex-col overflow-hidden border-r border-border bg-gradient-to-b from-bg-2 to-bg-2/95 ${
+        compactTop ? "top-11" : "top-14"
+      }`}
+    >
       <div className="border-b border-border/80 px-3 py-3.5">
         <div className="flex items-start gap-2.5">
           <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border/80 bg-bg text-teal shadow-sm">
@@ -25,7 +29,15 @@ export function Sidebar() {
           <NavItem href="/dashboard" label="Dashboard" />
         </NavGroup>
         <NavGroup label="Portfolio">
-          <NavItem href="/companies" label="All companies" />
+          <NavItem
+            href="/companies"
+            label="All companies"
+            isActiveMatch={(p) =>
+              p === "/companies" ||
+              p === "/companies/" ||
+              p.startsWith("/companies/add")
+            }
+          />
           <PortfolioCompanyNav />
           <NavItem href="/companies/new/check" label="Pre-investment check" />
         </NavGroup>

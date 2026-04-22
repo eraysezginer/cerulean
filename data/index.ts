@@ -1,4 +1,5 @@
 export * from "./companies";
+export * from "./funds";
 export * from "./flags";
 export * from "./notes";
 export * from "./signals";

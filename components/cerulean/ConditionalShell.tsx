@@ -13,5 +13,8 @@ export function ConditionalShell({ children }: { children: React.ReactNode }) {
 
   if (isLogin) return <>{children}</>;
 
-  return <Shell>{children}</Shell>;
+  const compactTopBar =
+    pathname === "/companies/add" || pathname === "/companies/add/";
+
+  return <Shell compactTopBar={compactTopBar}>{children}</Shell>;
 }

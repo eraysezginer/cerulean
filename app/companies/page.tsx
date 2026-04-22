@@ -1,9 +1,14 @@
-import { companies } from "@/data/companies";
+import Link from "next/link";
+import { getAllCompaniesList } from "@/data/companies";
+
+export const dynamic = "force-dynamic";
 import { CompaniesTable } from "@/components/cerulean/CompaniesTable";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { cn } from "@/lib/utils";
 
 export default function CompaniesPage() {
+  const companies = getAllCompaniesList();
   return (
     <div className="p-8">
       <div className="mb-6 flex flex-wrap items-center gap-3">
@@ -11,9 +16,15 @@ export default function CompaniesPage() {
           placeholder="Search companies…"
           className="max-w-xs border-border bg-bg"
         />
-        <Button className="ml-auto bg-teal text-primary-foreground hover:bg-teal/90">
+        <Link
+          href="/companies/add?step=1"
+          className={cn(
+            buttonVariants(),
+            "ml-auto h-9 bg-teal text-primary-foreground hover:bg-teal/90"
+          )}
+        >
           + Add company
-        </Button>
+        </Link>
       </div>
       <h1 className="mb-1 text-page-title text-text-1">All companies</h1>
       <p className="mb-2 text-body text-text-2">

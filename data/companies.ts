@@ -1,14 +1,7 @@
-export type Cadence = "Monthly" | "Weekly" | "Irregular" | "Silent";
+import { getAddedCompany, listAddedCompanies } from "@/lib/company-registry";
+import type { CompanyRow } from "./company-types";
 
-export type CompanyRow = {
-  id: string;
-  name: string;
-  health: number;
-  flags: number;
-  lastUpdate: string;
-  cadence: Cadence;
-  series?: string;
-};
+export type { Cadence, CompanyRow } from "./company-types";
 
 export const companies: CompanyRow[] = [
   {
@@ -79,5 +72,12 @@ export const companies: CompanyRow[] = [
 ];
 
 export function getCompanyById(id: string): CompanyRow | undefined {
-  return companies.find((c) => c.id === id);
+  return getAddedCompany(id) ?? companies.find((c) => c.id === id);
+}
+
+/** Static seed + in-memory added companies (from Add company flow) */
+export function getAllCompaniesList(): CompanyRow[] {
+  const added = listAddedCompanies();
+  if (added.length === 0) return companies;
+  return [...companies, ...added];
 }
