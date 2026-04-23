@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Star } from "lucide-react";
 import { useDefaultCompanyId } from "@/hooks/use-default-company-id";
 import type { CompanyRow } from "@/data/company-types";
+import { isSeedCompanyId } from "@/data/company-seed";
 import { setDefaultCompanyId } from "@/lib/default-company";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -94,6 +95,17 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
               </td>
               <td className="p-3">
                 <div className="flex flex-wrap gap-1.5">
+                  {!isSeedCompanyId(c.id) ? (
+                    <Link
+                      href={`/companies/${c.id}/edit?step=1`}
+                      className={cn(
+                        buttonVariants({ variant: "outline", size: "sm" }),
+                        "border-border text-text-1 hover:text-text-1"
+                      )}
+                    >
+                      Edit
+                    </Link>
+                  ) : null}
                   <Link
                     href={`/companies/${c.id}/flags`}
                     className={cn(

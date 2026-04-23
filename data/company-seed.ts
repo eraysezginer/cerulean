@@ -68,3 +68,7 @@ export const companies: CompanyRow[] = [
     cadence: "Monthly",
   },
 ];
+
+export function isSeedCompanyId(id: string): boolean {
+  return companies.some((c) => c.id === id);
+}

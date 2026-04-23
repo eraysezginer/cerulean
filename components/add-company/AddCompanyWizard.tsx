@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { useAddCompany } from "@/contexts/AddCompanyFormContext";
 import type { AddCompanyForm } from "@/lib/add-company-types";
+import { initialAddCompanyForm } from "@/lib/add-company-types";
 import { FundSelector } from "./FundSelector";
 import {
   AddressDisplay,
@@ -96,29 +97,65 @@ function clampStep(n: number) {
   return Math.min(5, Math.max(1, n));
 }
 
-export function AddCompanyWizard() {
+export function AddCompanyWizard({
+  editCompanyId,
+}: {
+  editCompanyId?: string;
+} = {}) {
   const router = useRouter();
   const sp = useSearchParams();
-  const { form, setField, setForm, validateStep, clearStepErrors, stepErrors, reset } =
-    useAddCompany();
+  const {
+    form,
+    setField,
+    setForm,
+    replaceForm,
+    validateStep,
+    clearStepErrors,
+    stepErrors,
+    reset,
+  } = useAddCompany();
   const [submitting, setSubmitting] = useState(false);
   const [apiError, setApiError] = useState<string | null>(null);
+  const [loaded, setLoaded] = useState(!editCompanyId);
+
+  const basePath = editCompanyId
+    ? `/companies/${editCompanyId}/edit`
+    : "/companies/add";
 
   const step = clampStep(Number(sp.get("step") || 1) || 1);
 
   const setStep = useCallback(
     (n: number) => {
       clearStepErrors();
-      router.replace(`/companies/add?step=${n}`);
+      router.replace(`${basePath}?step=${n}`);
     },
-    [router, clearStepErrors]
+    [router, clearStepErrors, basePath]
   );
 
   useEffect(() => {
     if (!sp.get("step")) {
-      router.replace("/companies/add?step=1");
+      router.replace(`${basePath}?step=1`);
     }
-  }, [sp, router]);
+  }, [sp, router, basePath]);
+
+  useEffect(() => {
+    if (!editCompanyId) return;
+    let cancel = false;
+    void (async () => {
+      const res = await fetch(`/api/companies/${editCompanyId}`);
+      if (!res.ok) {
+        if (!cancel) router.replace("/companies");
+        return;
+      }
+      const data = (await res.json()) as { form?: AddCompanyForm };
+      if (cancel || !data.form) return;
+      replaceForm({ ...initialAddCompanyForm, ...data.form });
+      setLoaded(true);
+    })();
+    return () => {
+      cancel = true;
+    };
+  }, [editCompanyId, replaceForm, router]);
 
   const goNext = (fromStep: number) => {
     if (!validateStep(fromStep)) return;
@@ -136,6 +173,20 @@ export function AddCompanyWizard() {
     setSubmitting(true);
     setApiError(null);
     try {
+      if (editCompanyId) {
+        const res = await fetch(`/api/companies/${editCompanyId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(form as unknown as AddCompanyForm),
+        });
+        const data = (await res.json()) as { error?: string };
+        if (!res.ok) {
+          setApiError(data.error ?? "Request failed");
+          return;
+        }
+        router.push(`/companies/${editCompanyId}/flags`);
+        return;
+      }
       const res = await fetch("/api/companies", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -155,6 +206,12 @@ export function AddCompanyWizard() {
     }
   };
 
+  if (editCompanyId && !loaded) {
+    return (
+      <div className="px-8 py-12 text-center text-[16px] text-text-2">Loading form…</div>
+    );
+  }
+
   return (
     <div className="px-8 py-6">
       <nav className="mb-3 text-[13px] text-text-3" aria-label="Breadcrumb">
@@ -162,9 +219,13 @@ export function AddCompanyWizard() {
           Portfolio
         </Link>
         <span className="px-1">›</span>
-        <span className="text-text-2">Add company</span>
+        <span className="text-text-2">
+          {editCompanyId ? "Edit company" : "Add company"}
+        </span>
       </nav>
-      <h1 className="mb-1 text-[20px] font-semibold text-text-1">Add a company</h1>
+      <h1 className="mb-1 text-[20px] font-semibold text-text-1">
+        {editCompanyId ? "Edit company" : "Add a company"}
+      </h1>
       <StepProgress currentStep={step} />
 
       {step === 1 && (
@@ -632,7 +693,7 @@ export function AddCompanyWizard() {
           </div>
           <NavigationButtons
             onBack={() => goBack(5)}
-            nextLabel="Add company & start monitoring"
+            nextLabel={editCompanyId ? "Save changes" : "Add company & start monitoring"}
             isSubmit
             isLoading={submitting}
             nextWidth={164}

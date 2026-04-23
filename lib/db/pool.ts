@@ -1,4 +1,9 @@
+import { loadEnvConfig } from "@next/env";
 import mysql from "mysql2/promise";
+
+// `next start` + systemd bazen .env yüklenmeden lib erişirse diye proje kökündeki .env'yi açıkça yükle
+const projectDir = process.cwd();
+loadEnvConfig(projectDir);
 
 function getPoolConfig(): mysql.PoolOptions {
   const url = process.env.DATABASE_URL;

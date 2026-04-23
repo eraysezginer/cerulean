@@ -10,6 +10,7 @@ export type CompanyDbRow = RowDataPacket & {
   lastUpdate: string;
   cadence: string;
   series: string | null;
+  formData: string;
 };
 
 export function mapCompanyRowToDomain(c: CompanyDbRow): CompanyRow {
@@ -66,6 +67,42 @@ export async function insertCompanyWithNotes(input: NewCompanyWithNotes): Promis
     await conn.execute(
       "INSERT INTO `Company` (`id`, `legalName`, `cadence`, `formData`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
       [input.companyId, input.legalName, input.cadence, input.formDataJson]
+    );
+    for (const n of input.notes) {
+      await conn.execute(
+        "INSERT INTO `Note` (`id`, `companyId`, `tag`, `date`, `text`) VALUES (?, ?, ?, ?, ?)",
+        [n.id, input.companyId, n.tag, n.date, n.text]
+      );
+    }
+    await conn.commit();
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch {
+      /* ignore */
+    }
+    throw e;
+  } finally {
+    conn.release();
+  }
+}
+
+/**
+ * Sihirbaz notları (n1–n4) silinir, yenileri eklenir; aynı companyId’deki diğer notlara dokunulmaz.
+ */
+export async function updateCompanyWithNotes(input: NewCompanyWithNotes): Promise<void> {
+  const pool = getPool();
+  const conn = await pool.getConnection();
+  const wizardNoteIds = [1, 2, 3, 4].map((i) => `${input.companyId}-n${i}`);
+  try {
+    await conn.beginTransaction();
+    await conn.execute(
+      "UPDATE `Company` SET `legalName` = ?, `cadence` = ?, `formData` = ?, `updatedAt` = CURRENT_TIMESTAMP(3) WHERE `id` = ?",
+      [input.legalName, input.cadence, input.formDataJson, input.companyId]
+    );
+    await conn.execute(
+      "DELETE FROM `Note` WHERE `companyId` = ? AND `id` IN (?, ?, ?, ?)",
+      [input.companyId, ...wizardNoteIds]
     );
     for (const n of input.notes) {
       await conn.execute(

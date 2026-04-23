@@ -7,6 +7,8 @@ Type=simple
 User=cerulean
 Group=cerulean
 WorkingDirectory=/home/cerulean/cerulean
+# DATABASE_URL vb. — dosya yoksa servis düşmesin diye başında -
+EnvironmentFile=-/home/cerulean/cerulean/.env
 Environment=NODE_ENV=production
 Environment=PORT=3000
 Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin

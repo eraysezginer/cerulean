@@ -18,6 +18,7 @@ type StepErrors = Partial<Record<string, string>>;
 type Ctx = {
   form: AddCompanyForm;
   setForm: (patch: Partial<AddCompanyForm>) => void;
+  replaceForm: (next: AddCompanyForm) => void;
   setField: <K extends keyof AddCompanyForm>(key: K, value: AddCompanyForm[K]) => void;
   stepErrors: StepErrors;
   setStepErrors: (e: StepErrors) => void;
@@ -34,6 +35,10 @@ export function AddCompanyFormProvider({ children }: { children: ReactNode }) {
 
   const setForm = useCallback((patch: Partial<AddCompanyForm>) => {
     setFormState((s) => ({ ...s, ...patch }));
+  }, []);
+
+  const replaceForm = useCallback((next: AddCompanyForm) => {
+    setFormState(next);
   }, []);
 
   const setField = useCallback(
@@ -103,6 +108,7 @@ export function AddCompanyFormProvider({ children }: { children: ReactNode }) {
     () => ({
       form,
       setForm,
+      replaceForm,
       setField,
       stepErrors,
       setStepErrors,
@@ -110,7 +116,7 @@ export function AddCompanyFormProvider({ children }: { children: ReactNode }) {
       validateStep,
       reset,
     }),
-    [form, setForm, setField, stepErrors, validateStep, reset, clearStepErrors]
+    [form, setForm, replaceForm, setField, stepErrors, validateStep, reset, clearStepErrors]
   );
 
   return (
