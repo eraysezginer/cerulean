@@ -28,6 +28,10 @@ export type DocumentIngestRow = RowDataPacket & {
   processingSeconds: number | null;
   jobStartedAt: Date;
   flagsJson: string | null;
+  /** Present after `001_document_ingest_ai_analysis` migration + analysis run */
+  aiAnalysisText?: string | null;
+  aiAnalysisModel?: string | null;
+  aiAnalysisAt?: Date | null;
 };
 
 export type NewDocumentIngest = {
@@ -74,6 +78,17 @@ export async function updateIngestJobComplete(
   await pool.execute(
     "UPDATE `DocumentIngest` SET `status` = 'complete', `processingSeconds` = ?, `flagsJson` = ?, `updatedAt` = CURRENT_TIMESTAMP(3) WHERE `jobId` = ?",
     [processingSeconds, flagsJson, jobId]
+  );
+}
+
+export async function updateIngestFromAiIngestResult(
+  jobId: string,
+  input: { flagsJson: string; analysisText: string; model: string }
+): Promise<void> {
+  const pool = getPool();
+  await pool.execute(
+    "UPDATE `DocumentIngest` SET `flagsJson` = ?, `aiAnalysisText` = ?, `aiAnalysisModel` = ?, `aiAnalysisAt` = CURRENT_TIMESTAMP(3), `updatedAt` = CURRENT_TIMESTAMP(3) WHERE `jobId` = ?",
+    [input.flagsJson, input.analysisText, input.model, jobId]
   );
 }
 

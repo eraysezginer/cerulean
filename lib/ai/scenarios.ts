@@ -1,14 +1,14 @@
 /**
- * AI “durum”ları — her ekran / tetikleyici farklı `scenario` ile aynı API’yi kullanır.
+ * AI scenario ids — each screen or trigger passes a different `scenario` to the same API.
  *
- * Akış (hepsi sunucuda, anahtar güvende):
- * 1) Uygulama bir olayda (ör. yükleme bitti) `jobId` + `scenario` gönderir.
- * 2) API veritabanından ilgili satırları okur, prompt metnini oluşturur.
- * 3) `createChatCompletion` → OpenRouter → metin döner.
- * 4) İstemci bu metni kullanıcıya gösterir.
+ * Flow (all on the server; key stays secret):
+ * 1) On an event (e.g. upload finished) the client sends `jobId` + `scenario`.
+ * 2) The API loads rows from the database and builds the prompt.
+ * 3) `createChatCompletion` → OpenRouter → text response.
+ * 4) The client shows flags + analysis from the response / job poll.
  */
 export const AiScenario = {
-  /** Yükleme tamamlandıktan sonra: ingest + bayrak özeti → analiz metni */
+  /** After upload: files + precomputed context → model returns JSON flags + analysis (server persists) */
   postUploadDocument: "post_upload_document",
 } as const;
 

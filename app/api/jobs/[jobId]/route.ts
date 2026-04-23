@@ -12,7 +12,7 @@ export async function GET(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  const { job, state, steps, flagsGenerated } = view;
+  const { job, state, steps, flagsGenerated, aiAnalysis, aiAnalysisModel } = view;
   const stepsComplete = steps.filter((s) => s.status === "complete").length;
 
   return NextResponse.json({
@@ -31,5 +31,7 @@ export async function GET(
     temporalType: job.temporalType,
     processingSeconds: job.processingSeconds,
     flags: state === "complete" ? job.flags : undefined,
+    aiAnalysis: state === "complete" ? aiAnalysis : undefined,
+    aiAnalysisModel: state === "complete" ? aiAnalysisModel : undefined,
   });
 }

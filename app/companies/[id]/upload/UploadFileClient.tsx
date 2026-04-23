@@ -159,6 +159,9 @@ type JobResponse = {
   temporalType: "in-sequence" | "historical" | "reference";
   processingSeconds: number;
   flags?: CompanyFlagDetail[];
+  /** Loaded from DB after a prior AI run */
+  aiAnalysis?: string | null;
+  aiAnalysisModel?: string | null;
 };
 
 type IngestMeta = {
@@ -200,6 +203,37 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
   }, []);
 
   useEffect(() => {
+    if (typeof window === "undefined") return;
+    const k = `cerulean.upload.job.${company.id}`;
+    const sid = sessionStorage.getItem(k);
+    if (!sid) return;
+    const ac = new AbortController();
+    void (async () => {
+      try {
+        const res = await fetch(`/api/jobs/${sid}`, { signal: ac.signal });
+        if (!res.ok) {
+          sessionStorage.removeItem(k);
+          return;
+        }
+        const j = (await res.json()) as JobResponse;
+        if (j.status !== "complete") return;
+        setIngest({
+          jobId: sid,
+          hash: j.hash,
+          fileName: j.fileName,
+          fileSize: j.fileSize,
+        });
+        setPolled(j);
+        if (j.aiAnalysis) setAiAnalysis(j.aiAnalysis);
+        setPhase("complete");
+      } catch {
+        /* abort */
+      }
+    })();
+    return () => ac.abort();
+  }, [company.id]);
+
+  useEffect(() => {
     if (!userSetTemporal) {
       resetTemporalFromDoc(docType);
     }
@@ -223,6 +257,7 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
 
   const onSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    sessionStorage.removeItem(`cerulean.upload.job.${company.id}`);
     setSubmitError(null);
     if (files.length === 0) {
       setSubmitError("Add at least one file in a supported format.");
@@ -285,7 +320,9 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
       if (!res.ok || cancelled) return;
       const j = (await res.json()) as JobResponse;
       setPolled(j);
+      if (j.aiAnalysis) setAiAnalysis(j.aiAnalysis);
       if (j.status === "complete") {
+        sessionStorage.setItem(`cerulean.upload.job.${company.id}`, ingest.jobId);
         setPhase("complete");
       }
     };
@@ -300,6 +337,7 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
   }, [phase, ingest]);
 
   const resetForm = () => {
+    sessionStorage.removeItem(`cerulean.upload.job.${company.id}`);
     setPhase("form");
     setIngest(null);
     setPolled(null);
@@ -318,11 +356,12 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
         body: JSON.stringify({
           scenario: AiScenario.postUploadDocument,
           jobId: ingest.jobId,
+          regenerate: Boolean(aiAnalysis),
         }),
       });
       const raw = await res.text();
       if (!res.ok) {
-        let msg = "AI analizi alınamadı.";
+        let msg = "Could not load AI analysis.";
         try {
           const j = JSON.parse(raw) as { error?: string };
           if (j.error) msg = j.error;
@@ -332,10 +371,17 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
         setAiError(msg);
         return;
       }
-      const j = JSON.parse(raw) as { analysis?: string };
+      const j = JSON.parse(raw) as { analysis?: string; flags?: CompanyFlagDetail[] };
       setAiAnalysis(j.analysis ?? "");
+      if (Array.isArray(j.flags)) {
+        const nextFlags = j.flags;
+        setPolled((prev) => {
+          if (!prev) return prev;
+          return { ...prev, flags: nextFlags, flagsGenerated: nextFlags.length };
+        });
+      }
     } catch {
-      setAiError("Ağ hatası");
+      setAiError("Network error");
     } finally {
       setAiLoading(false);
     }
@@ -396,7 +442,8 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
           })}
 
           <div className="w-full rounded-lg bg-teal/[0.05] px-3 py-2 text-center text-[14px] text-teal">
-            Estimated completion: {polled?.eta ?? "45 seconds"} · You will be notified when flags are ready
+            Estimated completion: {polled?.eta ?? "45 seconds"} · When ingest finishes, use{" "}
+            <strong>Generate flags &amp; analysis</strong> on the next screen
           </div>
         </div>
       </div>
@@ -435,7 +482,8 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
         </p>
         {list.length === 0 ? (
           <div className="rounded-lg border border-border bg-green-light p-4 text-[16px] text-green">
-            No flags generated. Document added to baseline successfully.
+            No model flags yet. Document is stored; run <strong>Generate flags &amp; analysis</strong> above to
+            create flags from the file(s) and precomputed context.
           </div>
         ) : (
           <div className="space-y-3">
@@ -446,11 +494,10 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
         )}
 
         <div className="mt-8 rounded-lg border border-dashed border-teal/35 bg-teal-light/30 p-4">
-          <p className="text-[13px] font-medium uppercase tracking-wide text-text-3">AI analizi</p>
+          <p className="text-[13px] font-medium uppercase tracking-wide text-text-3">AI flags & analysis</p>
           <p className="mt-1 text-[14px] leading-snug text-text-2">
-            İşlem bittikten sonra, bu dosyaya ait kayıtlı bilgiler ve üretilen bayraklar sunucuda toplanır; model
-            buna göre kısa bir metin üretir ve aşağıda gösterilir. (Flags ve diğer ekranlar için aynı sunucu
-            uç noktasına yeni “durum” tipleri eklenebilir.)
+            The server sends your stored file(s) plus precomputed monitoring context to the model.
+            The model returns flags and an English analysis; both are saved to this ingest record.
           </p>
           <Button
             type="button"
@@ -460,7 +507,11 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
             onClick={runPostUploadAnalysis}
             className="mt-3 h-9 bg-teal text-primary-foreground hover:bg-teal/90"
           >
-            {aiLoading ? "Üretiliyor…" : aiAnalysis ? "Analizi yenile" : "AI analizi oluştur"}
+            {aiLoading
+              ? "Calling model…"
+              : aiAnalysis
+                ? "Regenerate flags & analysis"
+                : "Generate flags & analysis"}
           </Button>
           {aiError ? <p className="mt-2 text-[14px] text-red">{aiError}</p> : null}
           {aiAnalysis ? (

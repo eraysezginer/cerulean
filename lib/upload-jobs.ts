@@ -1,5 +1,4 @@
 import type { CompanyFlagDetail } from "@/data/flags";
-import { getFlagsForCompany } from "@/data/flags";
 import {
   selectIngestByJobId,
   selectPrimaryHashByJobId,
@@ -33,27 +32,6 @@ function toBool(v: number | boolean): boolean {
   return v === true || v === 1;
 }
 
-function buildMockFlags(companyId: string, fileName: string): CompanyFlagDetail[] {
-  const base = getFlagsForCompany(companyId).slice(0, 2);
-  if (base.length === 0) {
-    return [
-      {
-        id: `up-${Date.now()}-1`,
-        confidence: "High",
-        signalType: "Narrative density",
-        description:
-          "Compared to the stored baseline, disclosure depth in this document differs in several sections.",
-        sourceAnchor: fileName,
-      },
-    ];
-  }
-  return base.map((f, i) => ({
-    ...f,
-    id: `upload-${companyId}-${Date.now()}-${i}`,
-    sourceAnchor: fileName,
-  }));
-}
-
 function rowToUploadJob(row: DocumentIngestRow, flags: CompanyFlagDetail[]): UploadJob {
   return {
     companyId: row.companyId,
@@ -77,6 +55,9 @@ export async function getJobView(jobId: string): Promise<{
   state: "processing" | "complete";
   steps: PipelineStep[];
   flagsGenerated: number;
+  /** Persisted post-upload AI analysis, if any */
+  aiAnalysis: string | null;
+  aiAnalysisModel: string | null;
 } | null> {
   let row = await selectIngestByJobId(jobId);
   if (!row) return null;
@@ -87,14 +68,10 @@ export async function getJobView(jobId: string): Promise<{
   const simulatedComplete = elapsed > 5 || polls >= 4;
 
   if (simulatedComplete && row.status === "processing") {
-    let flags: CompanyFlagDetail[] = [];
-    if (!toBool(row.suppressFlags)) {
-      flags = buildMockFlags(row.companyId, row.fileDisplayName);
-    }
     await updateIngestJobComplete(
       jobId,
       Math.max(1, Math.round(elapsed)),
-      flags.length ? JSON.stringify(flags) : null
+      null
     );
     const updated = await selectIngestByJobId(jobId);
     if (updated) {
@@ -192,6 +169,8 @@ export async function getJobView(jobId: string): Promise<{
     state: done ? "complete" : "processing",
     steps,
     flagsGenerated: job.suppressFlags ? 0 : flags.length,
+    aiAnalysis: row.aiAnalysisText ?? null,
+    aiAnalysisModel: row.aiAnalysisModel ?? null,
   };
 }
 
