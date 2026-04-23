@@ -32,6 +32,7 @@ import { PROCESSING_STEPS_PLACEHOLDER } from "@/lib/upload-pipeline-constants";
 import type { CompanyRow } from "@/data/company-types";
 import type { CompanyFlagDetail } from "@/data/flags";
 import { getFounderEmailsForCompany } from "@/lib/founder-emails";
+import { AiScenario } from "@/lib/ai";
 
 const ACCEPT = ".pdf,.eml,.msg,.txt,.docx,.xlsx";
 const PICKER_ACCEPT = `${ACCEPT},application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`;
@@ -190,6 +191,9 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [ingest, setIngest] = useState<IngestMeta | null>(null);
   const [polled, setPolled] = useState<JobResponse | null>(null);
+  const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const resetTemporalFromDoc = useCallback((id: DocId) => {
     setTemporal(defaultTemporalForDoc(id));
@@ -299,6 +303,42 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
     setPhase("form");
     setIngest(null);
     setPolled(null);
+    setAiAnalysis(null);
+    setAiError(null);
+  };
+
+  const runPostUploadAnalysis = async () => {
+    if (!ingest) return;
+    setAiLoading(true);
+    setAiError(null);
+    try {
+      const res = await fetch(`/api/companies/${company.id}/ai/analyze`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenario: AiScenario.postUploadDocument,
+          jobId: ingest.jobId,
+        }),
+      });
+      const raw = await res.text();
+      if (!res.ok) {
+        let msg = "AI analizi alınamadı.";
+        try {
+          const j = JSON.parse(raw) as { error?: string };
+          if (j.error) msg = j.error;
+        } catch {
+          if (raw.length < 200) msg = raw;
+        }
+        setAiError(msg);
+        return;
+      }
+      const j = JSON.parse(raw) as { analysis?: string };
+      setAiAnalysis(j.analysis ?? "");
+    } catch {
+      setAiError("Ağ hatası");
+    } finally {
+      setAiLoading(false);
+    }
   };
 
   if (phase === "processing" && ingest) {
@@ -404,6 +444,31 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
             ))}
           </div>
         )}
+
+        <div className="mt-8 rounded-lg border border-dashed border-teal/35 bg-teal-light/30 p-4">
+          <p className="text-[13px] font-medium uppercase tracking-wide text-text-3">AI analizi</p>
+          <p className="mt-1 text-[14px] leading-snug text-text-2">
+            İşlem bittikten sonra, bu dosyaya ait kayıtlı bilgiler ve üretilen bayraklar sunucuda toplanır; model
+            buna göre kısa bir metin üretir ve aşağıda gösterilir. (Flags ve diğer ekranlar için aynı sunucu
+            uç noktasına yeni “durum” tipleri eklenebilir.)
+          </p>
+          <Button
+            type="button"
+            variant="default"
+            size="lg"
+            disabled={aiLoading}
+            onClick={runPostUploadAnalysis}
+            className="mt-3 h-9 bg-teal text-primary-foreground hover:bg-teal/90"
+          >
+            {aiLoading ? "Üretiliyor…" : aiAnalysis ? "Analizi yenile" : "AI analizi oluştur"}
+          </Button>
+          {aiError ? <p className="mt-2 text-[14px] text-red">{aiError}</p> : null}
+          {aiAnalysis ? (
+            <div className="mt-4 max-h-[min(24rem,50vh)] overflow-y-auto rounded-md border border-border bg-bg p-3 text-[14px] leading-relaxed text-text-1">
+              <p className="whitespace-pre-wrap">{aiAnalysis}</p>
+            </div>
+          ) : null}
+        </div>
 
         <div className="mt-8 flex flex-wrap items-center gap-2">
           <Button
