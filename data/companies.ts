@@ -1,83 +1,23 @@
-import { getAddedCompany, listAddedCompanies } from "@/lib/company-registry";
+import { companies as seedCompanies } from "./company-seed";
 import type { CompanyRow } from "./company-types";
+import {
+  mapCompanyRowToDomain,
+  selectCompaniesOrderedByCreatedAt,
+  selectCompanyById,
+} from "@/lib/db/company";
 
 export type { Cadence, CompanyRow } from "./company-types";
 
-export const companies: CompanyRow[] = [
-  {
-    id: "kalder",
-    name: "Kalder Inc.",
-    health: 24,
-    flags: 5,
-    lastUpdate: "3d",
-    cadence: "Monthly",
-    series: "Series A",
-  },
-  {
-    id: "allhere",
-    name: "AllHere Education",
-    health: 41,
-    flags: 3,
-    lastUpdate: "7d",
-    cadence: "Monthly",
-  },
-  {
-    id: "delve",
-    name: "Delve Systems",
-    health: 38,
-    flags: 4,
-    lastUpdate: "1d",
-    cadence: "Irregular",
-  },
-  {
-    id: "frank",
-    name: "Frank Fintech",
-    health: 72,
-    flags: 1,
-    lastUpdate: "14d",
-    cadence: "Monthly",
-  },
-  {
-    id: "nate",
-    name: "Nate Inc.",
-    health: 12,
-    flags: 7,
-    lastUpdate: "28d",
-    cadence: "Silent",
-  },
-  {
-    id: "lightspeed",
-    name: "Lightspeed App",
-    health: 88,
-    flags: 0,
-    lastUpdate: "2d",
-    cadence: "Weekly",
-  },
-  {
-    id: "atlas",
-    name: "Atlas Platform",
-    health: 65,
-    flags: 2,
-    lastUpdate: "5d",
-    cadence: "Monthly",
-  },
-  {
-    id: "nova",
-    name: "Nova Analytics",
-    health: 79,
-    flags: 1,
-    lastUpdate: "9d",
-    cadence: "Monthly",
-  },
-];
-
-export function getCompanyById(id: string): CompanyRow | undefined {
-  return getAddedCompany(id) ?? companies.find((c) => c.id === id);
+export async function getCompanyById(id: string): Promise<CompanyRow | undefined> {
+  const row = await selectCompanyById(id);
+  if (row) {
+    return mapCompanyRowToDomain(row);
+  }
+  return seedCompanies.find((c) => c.id === id);
 }
 
-/** Static seed + in-memory added companies (from Add company flow) */
-export function getAllCompaniesList(): CompanyRow[] {
-  const added = listAddedCompanies();
-  if (added.length === 0) return companies;
-  return [...companies, ...added];
+/** Seed portfolio + MySQL `Company` rows. */
+export async function getAllCompaniesList(): Promise<CompanyRow[]> {
+  const fromDb = await selectCompaniesOrderedByCreatedAt();
+  return [...seedCompanies, ...fromDb.map(mapCompanyRowToDomain)];
 }

@@ -3,12 +3,12 @@ import { getCompanyById } from "@/data/companies";
 import { getExternalSignalsForCompany } from "@/data/signals";
 import { SignalCard } from "@/components/cerulean/SignalCard";
 
-export default function ExternalSignalsPage({
+export default async function ExternalSignalsPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const company = getCompanyById(params.id);
+  const company = await getCompanyById(params.id);
   if (!company) notFound();
 
   const signals = getExternalSignalsForCompany(company.id);

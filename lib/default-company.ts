@@ -1,4 +1,4 @@
-import { companies } from "@/data/companies";
+import { companies } from "@/data/company-seed";
 
 export const DEFAULT_COMPANY_KEY = "cerulean.defaultCompanyId";
 

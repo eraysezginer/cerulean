@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { companies } from "@/data/companies";
+import { companies } from "@/data/company-seed";
 import { getDefaultCompanyId } from "@/lib/default-company";
 
 export function useDefaultCompanyId() {

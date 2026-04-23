@@ -1,4 +1,4 @@
-import { getRegisteredNotes } from "@/lib/notes-registry";
+import { selectNotesForCompany } from "@/lib/db/note";
 
 export type NoteTag = "Commitment" | "Concern" | "Market" | "Context";
 
@@ -32,10 +32,25 @@ export const kalderNotes: Note[] = [
   },
 ];
 
-export function getNotesForCompany(companyId: string): Note[] {
-  const reg = getRegisteredNotes(companyId);
-  if (reg) return reg;
-  if (companyId === "kalder") return kalderNotes;
+function isNoteTag(t: string): t is NoteTag {
+  return t === "Commitment" || t === "Concern" || t === "Market" || t === "Context";
+}
+
+export async function getNotesForCompany(companyId: string): Promise<Note[]> {
+  const dbRows = await selectNotesForCompany(companyId);
+  const mapped: Note[] = dbRows.map((n) => ({
+    id: n.id,
+    tag: isNoteTag(n.tag) ? n.tag : "Context",
+    date: n.date,
+    text: n.text,
+  }));
+
+  if (companyId === "kalder") {
+    return [...kalderNotes, ...mapped];
+  }
+  if (mapped.length > 0) {
+    return mapped;
+  }
   return [
     {
       id: `${companyId}-1`,

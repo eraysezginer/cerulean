@@ -38,12 +38,12 @@ function SectionHeading({
   );
 }
 
-export default function BehavioralPage({
+export default async function BehavioralPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const company = getCompanyById(params.id);
+  const company = await getCompanyById(params.id);
   if (!company) notFound();
 
   const send = kalderSendTime;

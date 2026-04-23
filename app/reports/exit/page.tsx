@@ -1,4 +1,4 @@
-import { companies } from "@/data/companies";
+import { companies } from "@/data/company-seed";
 import { cn } from "@/lib/utils";
 
 const readiness = [

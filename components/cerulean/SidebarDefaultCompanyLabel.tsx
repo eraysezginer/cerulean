@@ -1,6 +1,6 @@
 "use client";
 
-import { companies } from "@/data/companies";
+import { companies } from "@/data/company-seed";
 import { useDefaultCompanyId } from "@/hooks/use-default-company-id";
 
 export function SidebarDefaultCompanyLabel() {

@@ -1,9 +1,10 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { appendContextNoteToMyNotes } from "@/lib/append-context-note";
 import { logDocumentIngestAudit } from "@/lib/ingest-audit";
+import { insertDocumentIngest } from "@/lib/db/document-ingest";
 import { getTimelineDocuments } from "@/lib/timeline-store";
-import { createJob } from "@/lib/upload-jobs";
+import { saveUploadFiles } from "@/lib/upload-file-storage";
 
 export const runtime = "nodejs";
 
@@ -16,11 +17,13 @@ export async function GET(
 }
 
 function slugForAddress(name: string): string {
-  return name
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, 40) || "company";
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "")
+      .slice(0, 40) || "company"
+  );
 }
 
 async function sha256File(file: File): Promise<string> {
@@ -40,7 +43,7 @@ export async function POST(
     return NextResponse.json({ error: "No file provided" }, { status: 400 });
   }
 
-  const primary = files[0];
+  const primary = files[0]!;
   const hash = await sha256File(primary);
   const extraHashes =
     files.length > 1 ? await Promise.all(files.slice(1).map((f) => sha256File(f))) : [];
@@ -50,18 +53,22 @@ export async function POST(
   const forwardingAddress = `uploads+${slugForAddress(companyName)}@ingest.cerulean.app`;
 
   const documentTypeName = String(form.get("documentTypeName") ?? "Investor update");
-  const temporalType = String(form.get("temporalType") ?? "historical") as
-    | "in-sequence"
-    | "historical"
-    | "reference";
-
+  const temporalType = String(form.get("temporalType") ?? "historical");
   const updateLabel = String(form.get("updateLabel") ?? "");
   const documentDate = String(form.get("documentDate") ?? "");
+  const receivedDate = String(form.get("receivedDate") ?? "");
+  const language = String(form.get("language") ?? "");
+  const originalSender = String(form.get("originalSender") ?? "");
+  const howReceived = String(form.get("howReceived") ?? "");
+  const provenance = String(form.get("provenance") ?? "");
+  const optForensic = String(form.get("optForensic")) === "true";
+  const optExternal = String(form.get("optExternal")) === "true";
+  const optDigest = String(form.get("optDigest")) === "true";
   const suppressFlags = String(form.get("suppressFlags")) === "true";
 
   const contextNote = String(form.get("contextNote") ?? "");
   if (contextNote.trim()) {
-    appendContextNoteToMyNotes(companyId, contextNote);
+    await appendContextNoteToMyNotes(companyId, contextNote);
   }
 
   logDocumentIngestAudit(
@@ -81,17 +88,35 @@ export async function POST(
   const displayName =
     files.length === 1 ? primary.name : `${primary.name} + ${files.length - 1} more`;
 
-  const { jobId } = createJob({
+  const jobId = `job-${companyId}-${Date.now()}`;
+  const ingestFolderId = randomUUID();
+
+  const stored = await saveUploadFiles(companyId, ingestFolderId, files);
+
+  await insertDocumentIngest({
+    id: ingestFolderId,
+    jobId,
     companyId,
-    fileName: displayName,
-    fileSize: totalSize,
-    hash,
     documentId,
-    updateLabel,
-    documentDate,
+    fileDisplayName: displayName,
+    fileCount: files.length,
+    totalSizeBytes: totalSize,
+    primaryHash: hash,
+    extraHashesJson: JSON.stringify(extraHashes),
     documentTypeName,
     temporalType,
+    updateLabel,
+    documentDate,
+    receivedDate,
+    language,
+    originalSender,
+    howReceived,
+    provenance,
+    optForensic,
+    optExternal,
+    optDigest,
     suppressFlags,
+    storedFilesJson: JSON.stringify(stored),
   });
 
   return NextResponse.json({

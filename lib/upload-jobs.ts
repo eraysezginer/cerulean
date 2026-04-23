@@ -1,14 +1,15 @@
 import type { CompanyFlagDetail } from "@/data/flags";
 import { getFlagsForCompany } from "@/data/flags";
+import {
+  selectIngestByJobId,
+  selectPrimaryHashByJobId,
+  updateIngestJobComplete,
+  type DocumentIngestRow,
+} from "@/lib/db/document-ingest";
+import type { PipelineStep } from "@/lib/upload-pipeline-constants";
 
-export type UploadJobStatus = "processing" | "complete";
-
-export type PipelineStep = {
-  id: string;
-  name: string;
-  status: "complete" | "processing" | "queued";
-  description: string;
-};
+export type { PipelineStep } from "@/lib/upload-pipeline-constants";
+export { PROCESSING_STEPS_PLACEHOLDER } from "@/lib/upload-pipeline-constants";
 
 export type UploadJob = {
   companyId: string;
@@ -26,59 +27,11 @@ export type UploadJob = {
   suppressFlags: boolean;
 };
 
-const jobs = new Map<string, UploadJob>();
-const firstPoll = new Map<string, number>();
+const jobPolls = new Map<string, number>();
 
-export function createJob(
-  data: Omit<UploadJob, "startTime" | "flags" | "processingSeconds"> & {
-    companyId: string;
-  }
-): { jobId: string; job: UploadJob } {
-  const jobId = `job-${data.companyId}-${Date.now()}`;
-  const job: UploadJob = {
-    ...data,
-    startTime: Date.now(),
-    flags: [],
-    processingSeconds: 0,
-  };
-  jobs.set(jobId, job);
-  firstPoll.set(jobId, 0);
-  return { jobId, job };
+function toBool(v: number | boolean): boolean {
+  return v === true || v === 1;
 }
-
-/** Shown in the client before the first /api/jobs poll returns. */
-export const PROCESSING_STEPS_PLACEHOLDER: PipelineStep[] = [
-  {
-    id: "ingest",
-    name: "Ingestion",
-    status: "complete",
-    description: "File stored and hash verified for the audit log.",
-  },
-  {
-    id: "classify",
-    name: "Classification",
-    status: "complete",
-    description: "Document type applied to the processing chain.",
-  },
-  {
-    id: "baseline",
-    name: "Baseline comparison",
-    status: "processing",
-    description: "Comparing to stored investor updates and stored claims.",
-  },
-  {
-    id: "forensic",
-    name: "Forensic analysis",
-    status: "queued",
-    description: "Waiting in the analysis queue.",
-  },
-  {
-    id: "xref",
-    name: "External cross-reference",
-    status: "queued",
-    description: "Preparing to match claims and public records.",
-  },
-];
 
 function buildMockFlags(companyId: string, fileName: string): CompanyFlagDetail[] {
   const base = getFlagsForCompany(companyId).slice(0, 2);
@@ -88,7 +41,8 @@ function buildMockFlags(companyId: string, fileName: string): CompanyFlagDetail[
         id: `up-${Date.now()}-1`,
         confidence: "High",
         signalType: "Narrative density",
-        description: "Compared to the stored baseline, disclosure depth in this document differs in several sections.",
+        description:
+          "Compared to the stored baseline, disclosure depth in this document differs in several sections.",
         sourceAnchor: fileName,
       },
     ];
@@ -100,21 +54,60 @@ function buildMockFlags(companyId: string, fileName: string): CompanyFlagDetail[
   }));
 }
 
-export function getJobView(jobId: string): {
+function rowToUploadJob(row: DocumentIngestRow, flags: CompanyFlagDetail[]): UploadJob {
+  return {
+    companyId: row.companyId,
+    fileName: row.fileDisplayName,
+    fileSize: row.totalSizeBytes,
+    hash: row.primaryHash,
+    documentId: row.documentId,
+    startTime: row.jobStartedAt.getTime(),
+    updateLabel: row.updateLabel,
+    documentDate: row.documentDate,
+    documentTypeName: row.documentTypeName,
+    temporalType: row.temporalType as UploadJob["temporalType"],
+    processingSeconds: row.processingSeconds ?? 0,
+    flags,
+    suppressFlags: toBool(row.suppressFlags),
+  };
+}
+
+export async function getJobView(jobId: string): Promise<{
   job: UploadJob;
   state: "processing" | "complete";
   steps: PipelineStep[];
   flagsGenerated: number;
-} | null {
-  const job = jobs.get(jobId);
-  if (!job) return null;
-  const elapsed = (Date.now() - job.startTime) / 1000;
-  const polls = (firstPoll.get(jobId) ?? 0) + 1;
-  firstPoll.set(jobId, polls);
+} | null> {
+  let row = await selectIngestByJobId(jobId);
+  if (!row) return null;
 
-  const isComplete = elapsed > 5 || polls >= 4;
+  const elapsed = (Date.now() - row.jobStartedAt.getTime()) / 1000;
+  const polls = (jobPolls.get(jobId) ?? 0) + 1;
+  jobPolls.set(jobId, polls);
+  const simulatedComplete = elapsed > 5 || polls >= 4;
 
-  const stepTemplate: PipelineStep[] = isComplete
+  if (simulatedComplete && row.status === "processing") {
+    let flags: CompanyFlagDetail[] = [];
+    if (!toBool(row.suppressFlags)) {
+      flags = buildMockFlags(row.companyId, row.fileDisplayName);
+    }
+    await updateIngestJobComplete(
+      jobId,
+      Math.max(1, Math.round(elapsed)),
+      flags.length ? JSON.stringify(flags) : null
+    );
+    const updated = await selectIngestByJobId(jobId);
+    if (updated) {
+      row = updated;
+    }
+  }
+
+  const flags: CompanyFlagDetail[] = row.flagsJson
+    ? (JSON.parse(row.flagsJson) as CompanyFlagDetail[])
+    : [];
+  const done = row.status === "complete";
+
+  const stepTemplate: PipelineStep[] = done
     ? [
         {
           id: "ingest",
@@ -180,15 +173,9 @@ export function getJobView(jobId: string): {
         },
       ];
 
-  if (isComplete && !job.flags.length && !job.suppressFlags) {
-    job.flags = buildMockFlags(job.companyId, job.fileName);
-  }
-  if (isComplete) {
-    job.processingSeconds = Math.max(1, Math.round(elapsed));
-  }
-
+  const job = rowToUploadJob(row, flags);
   const steps: PipelineStep[] =
-    job.suppressFlags && isComplete
+    job.suppressFlags && done
       ? stepTemplate.map((s, i) =>
           i < 2
             ? s
@@ -202,12 +189,12 @@ export function getJobView(jobId: string): {
 
   return {
     job,
-    state: isComplete ? "complete" : "processing",
+    state: done ? "complete" : "processing",
     steps,
-    flagsGenerated: job.suppressFlags ? 0 : job.flags.length,
+    flagsGenerated: job.suppressFlags ? 0 : flags.length,
   };
 }
 
-export function getJobHash(jobId: string): string | null {
-  return jobs.get(jobId)?.hash ?? null;
+export async function getJobHash(jobId: string): Promise<string | null> {
+  return selectPrimaryHashByJobId(jobId);
 }

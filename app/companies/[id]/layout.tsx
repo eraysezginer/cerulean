@@ -3,17 +3,17 @@ import { CompanyIdChrome } from "@/components/cerulean/CompanyIdChrome";
 import { getCompanyById } from "@/data/companies";
 import { getNotesForCompany } from "@/data/notes";
 
-export default function CompanyIdLayout({
+export default async function CompanyIdLayout({
   children,
   params,
 }: {
   children: React.ReactNode;
   params: { id: string };
 }) {
-  const company = getCompanyById(params.id);
+  const company = await getCompanyById(params.id);
   if (!company) notFound();
 
-  const notes = getNotesForCompany(company.id);
+  const notes = await getNotesForCompany(company.id);
 
   return (
     <CompanyIdChrome companyId={company.id} companyName={company.name} notes={notes}>

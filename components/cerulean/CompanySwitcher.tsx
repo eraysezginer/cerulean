@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Building2, ChevronDown } from "lucide-react";
-import { companies } from "@/data/companies";
+import { companies } from "@/data/company-seed";
 import { cn } from "@/lib/utils";
 
 export function CompanySwitcher({ companyId }: { companyId: string }) {

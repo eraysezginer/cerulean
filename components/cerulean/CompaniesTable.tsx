@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { Star } from "lucide-react";
 import { useDefaultCompanyId } from "@/hooks/use-default-company-id";
-import type { CompanyRow } from "@/data/companies";
+import type { CompanyRow } from "@/data/company-types";
 import { setDefaultCompanyId } from "@/lib/default-company";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";

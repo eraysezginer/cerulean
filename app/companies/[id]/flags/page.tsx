@@ -4,12 +4,12 @@ import { getFlagsForCompany } from "@/data/flags";
 import { FlagCard } from "@/components/cerulean/FlagCard";
 import { cn } from "@/lib/utils";
 
-export default function CompanyFlagsPage({
+export default async function CompanyFlagsPage({
   params,
 }: {
   params: { id: string };
 }) {
-  const company = getCompanyById(params.id);
+  const company = await getCompanyById(params.id);
   if (!company) notFound();
 
   const flags = getFlagsForCompany(company.id);

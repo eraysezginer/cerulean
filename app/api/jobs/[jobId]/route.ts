@@ -7,7 +7,7 @@ export async function GET(
   _request: Request,
   { params }: { params: { jobId: string } }
 ) {
-  const view = getJobView(params.jobId);
+  const view = await getJobView(params.jobId);
   if (!view) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }

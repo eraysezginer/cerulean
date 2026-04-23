@@ -1,24 +1,10 @@
-import type { Note } from "@/data/notes";
-import { getNotesForCompany } from "@/data/notes";
-import { registerNotesForCompany } from "@/lib/notes-registry";
+import { insertContextNote } from "@/lib/db/note";
 
 /**
- * Appends a Context-tagged private note, matching My Notes panel structure.
+ * Appends a Context-tagged private note in MySQL.
  */
-export function appendContextNoteToMyNotes(companyId: string, text: string): void {
+export async function appendContextNoteToMyNotes(companyId: string, text: string): Promise<void> {
   const trimmed = text.trim();
   if (!trimmed) return;
-
-  let notes = getNotesForCompany(companyId);
-  if (notes.length === 1 && notes[0].text === "No notes yet for this company.") {
-    notes = [];
-  }
-
-  const note: Note = {
-    id: `ctx-up-${Date.now()}`,
-    tag: "Context",
-    date: new Date().toISOString().slice(0, 10),
-    text: trimmed,
-  };
-  registerNotesForCompany(companyId, [...notes, note]);
+  await insertContextNote(companyId, trimmed);
 }

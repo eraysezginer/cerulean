@@ -7,8 +7,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 
-export default function CompaniesPage() {
-  const companies = getAllCompaniesList();
+export default async function CompaniesPage() {
+  const companies = await getAllCompaniesList();
   return (
     <div className="p-8">
       <div className="mb-6 flex flex-wrap items-center gap-3">

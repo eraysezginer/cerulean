@@ -26,8 +26,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { CheckboxShad } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
-import type { PipelineStep } from "@/lib/upload-jobs";
-import { PROCESSING_STEPS_PLACEHOLDER } from "@/lib/upload-jobs";
+import type { PipelineStep } from "@/lib/upload-pipeline-constants";
+import { PROCESSING_STEPS_PLACEHOLDER } from "@/lib/upload-pipeline-constants";
 import type { CompanyRow } from "@/data/company-types";
 import type { CompanyFlagDetail } from "@/data/flags";
 import { getFounderEmailsForCompany } from "@/lib/founder-emails";

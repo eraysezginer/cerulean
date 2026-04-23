@@ -1,0 +1,87 @@
+import type { RowDataPacket } from "mysql2";
+import type { Cadence, CompanyRow } from "@/data/company-types";
+import getPool from "./pool";
+
+export type CompanyDbRow = RowDataPacket & {
+  id: string;
+  legalName: string;
+  health: number;
+  flags: number;
+  lastUpdate: string;
+  cadence: string;
+  series: string | null;
+};
+
+export function mapCompanyRowToDomain(c: CompanyDbRow): CompanyRow {
+  return {
+    id: c.id,
+    name: c.legalName,
+    health: c.health,
+    flags: c.flags,
+    lastUpdate: c.lastUpdate,
+    cadence: c.cadence as Cadence,
+    series: c.series ?? undefined,
+  };
+}
+
+export async function selectCompanyById(id: string): Promise<CompanyDbRow | undefined> {
+  const pool = getPool();
+  const [rows] = await pool.execute<CompanyDbRow[]>(
+    "SELECT * FROM `Company` WHERE `id` = ? LIMIT 1",
+    [id]
+  );
+  return rows[0];
+}
+
+export async function selectCompaniesOrderedByCreatedAt(): Promise<CompanyDbRow[]> {
+  const pool = getPool();
+  const [rows] = await pool.execute<CompanyDbRow[]>(
+    "SELECT * FROM `Company` ORDER BY `createdAt` ASC"
+  );
+  return rows;
+}
+
+export async function selectCompanyIds(): Promise<string[]> {
+  const pool = getPool();
+  const [rows] = await pool.execute<RowDataPacket[]>("SELECT `id` FROM `Company`");
+  return rows.map((r) => String((r as { id: string }).id));
+}
+
+export type NewCompanyWithNotes = {
+  companyId: string;
+  legalName: string;
+  cadence: string;
+  formDataJson: string;
+  notes: { id: string; tag: string; date: string; text: string }[];
+};
+
+/**
+ * Tek transaction: `Company` + tüm notlar.
+ */
+export async function insertCompanyWithNotes(input: NewCompanyWithNotes): Promise<void> {
+  const pool = getPool();
+  const conn = await pool.getConnection();
+  try {
+    await conn.beginTransaction();
+    await conn.execute(
+      "INSERT INTO `Company` (`id`, `legalName`, `cadence`, `formData`, `createdAt`, `updatedAt`) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))",
+      [input.companyId, input.legalName, input.cadence, input.formDataJson]
+    );
+    for (const n of input.notes) {
+      await conn.execute(
+        "INSERT INTO `Note` (`id`, `companyId`, `tag`, `date`, `text`) VALUES (?, ?, ?, ?, ?)",
+        [n.id, input.companyId, n.tag, n.date, n.text]
+      );
+    }
+    await conn.commit();
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch {
+      /* ignore */
+    }
+    throw e;
+  } finally {
+    conn.release();
+  }
+}

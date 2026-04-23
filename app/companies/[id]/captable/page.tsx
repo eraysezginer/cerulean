@@ -4,12 +4,12 @@ import { getCapTableEventsForCompany } from "@/data/captable";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
-export default function CapTablePage({
+export default async function CapTablePage({
   params,
 }: {
   params: { id: string };
 }) {
-  const company = getCompanyById(params.id);
+  const company = await getCompanyById(params.id);
   if (!company) notFound();
 
   const events = getCapTableEventsForCompany(company.id);
