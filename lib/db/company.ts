@@ -1,4 +1,6 @@
-import type { RowDataPacket } from "mysql2";
+import { rm } from "node:fs/promises";
+import path from "node:path";
+import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import type { Cadence, CompanyRow } from "@/data/company-types";
 import getPool from "./pool";
 
@@ -121,4 +123,43 @@ export async function updateCompanyWithNotes(input: NewCompanyWithNotes): Promis
   } finally {
     conn.release();
   }
+}
+
+/**
+ * `Note` + `DocumentIngest` + `Company` satırlarını siler; upload klasörünü temizlemeye çalışır.
+ * @returns Silinen `Company` satırı varsa `true`
+ */
+export async function deleteCompanyAndRelatedData(companyId: string): Promise<boolean> {
+  const pool = getPool();
+  const conn = await pool.getConnection();
+  let deleted = false;
+  try {
+    await conn.beginTransaction();
+    await conn.execute("DELETE FROM `Note` WHERE `companyId` = ?", [companyId]);
+    await conn.execute("DELETE FROM `DocumentIngest` WHERE `companyId` = ?", [companyId]);
+    const [res] = await conn.execute<ResultSetHeader>(
+      "DELETE FROM `Company` WHERE `id` = ?",
+      [companyId]
+    );
+    deleted = res.affectedRows > 0;
+    await conn.commit();
+  } catch (e) {
+    try {
+      await conn.rollback();
+    } catch {
+      /* ignore */
+    }
+    throw e;
+  } finally {
+    conn.release();
+  }
+
+  if (deleted) {
+    const uploadDir = path.join(process.cwd(), "data", "storage", "uploads", companyId);
+    await rm(uploadDir, { recursive: true, force: true }).catch(() => {
+      /* no dir / permission */
+    });
+  }
+
+  return deleted;
 }

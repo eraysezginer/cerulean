@@ -8,6 +8,7 @@ import { isSeedCompanyId } from "@/data/company-seed";
 import { setDefaultCompanyId } from "@/lib/default-company";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
+import { CompanyRowActionMenu } from "@/components/cerulean/CompanyRowActionMenu";
 
 function healthColor(h: number) {
   if (h < 40) return "text-red font-semibold";
@@ -20,7 +21,7 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[900px] text-left text-body">
+      <table className="w-full min-w-[940px] text-left text-body">
         <thead>
           <tr className="border-b border-border bg-bg-2 text-[12px] uppercase tracking-wide text-text-3">
             <th className="p-3 font-medium">Company</th>
@@ -30,6 +31,9 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
             <th className="p-3 font-medium">Last update</th>
             <th className="p-3 font-medium">Cadence</th>
             <th className="p-3 font-medium">Actions</th>
+            <th className="w-14 p-3 text-center font-medium">
+              <span className="sr-only">Row menu</span>
+            </th>
           </tr>
         </thead>
         <tbody>
@@ -95,17 +99,6 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
               </td>
               <td className="p-3">
                 <div className="flex flex-wrap gap-1.5">
-                  {!isSeedCompanyId(c.id) ? (
-                    <Link
-                      href={`/companies/${c.id}/edit?step=1`}
-                      className={cn(
-                        buttonVariants({ variant: "outline", size: "sm" }),
-                        "border-border text-text-1 hover:text-text-1"
-                      )}
-                    >
-                      Edit
-                    </Link>
-                  ) : null}
                   <Link
                     href={`/companies/${c.id}/flags`}
                     className={cn(
@@ -143,6 +136,15 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
                     Cap table
                   </Link>
                 </div>
+              </td>
+              <td className="p-3 align-middle text-center">
+                {!isSeedCompanyId(c.id) ? (
+                  <div className="inline-flex justify-center">
+                    <CompanyRowActionMenu companyId={c.id} companyName={c.name} />
+                  </div>
+                ) : (
+                  <span className="text-[12px] text-text-3">—</span>
+                )}
               </td>
             </tr>
           ))}

@@ -23,6 +23,7 @@ import {
   TaggedTextarea,
   TwoColumnRow,
 } from "@/components/add-company/ui";
+import { DatePickerField } from "@/components/cerulean/DatePickerField";
 import { Button } from "@/components/ui/button";
 import { CheckboxShad } from "@/components/ui/checkbox";
 import { cn } from "@/lib/utils";
@@ -522,21 +523,23 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
               onChange={setUpdateLabel}
               placeholder="Update 7 · Q3 2024 · October investor letter"
             />
-            <FormField
+            <DatePickerField
               size="lg"
               label="Document date"
+              hint="— date the file was created or sent"
               value={documentDate}
               onChange={setDocumentDate}
-              placeholder="MM/DD/YYYY (date the file was created or sent)"
+              placeholder="Pick document date"
             />
           </TwoColumnRow>
           <TwoColumnRow>
-            <FormField
+            <DatePickerField
               size="lg"
               label="Received date"
+              hint="— when you received it in your system"
               value={receivedDate}
               onChange={setReceivedDate}
-              placeholder="MM/DD/YYYY (date received in your system)"
+              placeholder="Pick received date"
             />
             <SelectDropdown
               size="lg"

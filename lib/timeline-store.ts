@@ -20,3 +20,8 @@ export function setTimelineDocuments(companyId: string, list: TimelineDocument[]
 export function replaceWithSeed(companyId: string): void {
   byCompany.set(companyId, getSeedDocumentsForCompany(companyId));
 }
+
+/** Şirket silindiğinde bellekteki timeline önbelleğini kaldırır. */
+export function forgetTimelineForCompany(companyId: string): void {
+  byCompany.delete(companyId);
+}

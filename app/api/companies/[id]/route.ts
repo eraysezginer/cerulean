@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import type { AddCompanyForm } from "@/lib/add-company-types";
 import { initialAddCompanyForm, mapUpdateFrequencyToCadence } from "@/lib/add-company-types";
 import { wizardNotesFromAddCompanyForm } from "@/lib/company-wizard-notes";
-import { selectCompanyById, updateCompanyWithNotes } from "@/lib/db/company";
+import { deleteCompanyAndRelatedData, selectCompanyById, updateCompanyWithNotes } from "@/lib/db/company";
+import { forgetTimelineForCompany } from "@/lib/timeline-store";
 
 export async function GET(
   _req: Request,
@@ -53,6 +54,26 @@ export async function PATCH(
     console.error(e);
     return NextResponse.json(
       { error: "Unable to update company" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  _req: Request,
+  { params }: { params: { id: string } }
+) {
+  try {
+    const removed = await deleteCompanyAndRelatedData(params.id);
+    if (!removed) {
+      return NextResponse.json({ error: "Not found" }, { status: 404 });
+    }
+    forgetTimelineForCompany(params.id);
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    console.error(e);
+    return NextResponse.json(
+      { error: "Unable to remove company" },
       { status: 500 }
     );
   }

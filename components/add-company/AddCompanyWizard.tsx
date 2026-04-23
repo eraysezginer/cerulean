@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useAddCompany } from "@/contexts/AddCompanyFormContext";
 import type { AddCompanyForm } from "@/lib/add-company-types";
 import { initialAddCompanyForm } from "@/lib/add-company-types";
+import { DatePickerField } from "@/components/cerulean/DatePickerField";
 import { FundSelector } from "./FundSelector";
 import {
   AddressDisplay,
@@ -352,9 +353,10 @@ export function AddCompanyWizard({
           <hr className="my-4 border-border" />
           <div className="space-y-3">
             <TwoColumnRow>
-              <FormField
+              <DatePickerField
                 label="Investment date"
-                placeholder="MM/YYYY"
+                hint="— used for note dates and sequence"
+                placeholder="Select investment date"
                 value={form.investmentDate}
                 onChange={(v) => setField("investmentDate", v)}
                 error={stepErrors.investmentDate}
