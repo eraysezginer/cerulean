@@ -3,10 +3,16 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Building2, ChevronDown } from "lucide-react";
-import { companies } from "@/data/company-seed";
+import type { CompanyRow } from "@/data/company-types";
 import { cn } from "@/lib/utils";
 
-export function CompanySwitcher({ companyId }: { companyId: string }) {
+export function CompanySwitcher({
+  companyId,
+  companies,
+}: {
+  companyId: string;
+  companies: CompanyRow[];
+}) {
   const router = useRouter();
   const pathname = usePathname();
   const [selectedId, setSelectedId] = useState(companyId);

@@ -248,8 +248,17 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
       body: fd,
     });
     if (!res.ok) {
-      const j = await res.json().catch(() => ({}));
-      setSubmitError((j as { error?: string }).error ?? "Ingestion could not be started.");
+      let err = "Ingestion could not be started.";
+      const raw = await res.text();
+      try {
+        const j = JSON.parse(raw) as { error?: string };
+        if (j.error) err = j.error;
+      } catch {
+        if (raw && !raw.trimStart().startsWith("<") && raw.length < 400) {
+          err = raw.trim();
+        }
+      }
+      setSubmitError(err);
       return;
     }
     const data = (await res.json()) as { jobId: string; hash: string };

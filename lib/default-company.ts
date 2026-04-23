@@ -2,16 +2,19 @@ import { companies } from "@/data/company-seed";
 
 export const DEFAULT_COMPANY_KEY = "cerulean.defaultCompanyId";
 
+const fallbackId = () => companies[0]?.id ?? "kalder";
+
 export function getDefaultCompanyId(): string {
-  if (typeof window === "undefined") return companies[0].id;
-  const stored = localStorage.getItem(DEFAULT_COMPANY_KEY);
-  if (stored && companies.some((c) => c.id === stored)) return stored;
-  return companies[0].id;
+  if (typeof window === "undefined") return fallbackId();
+  const stored = localStorage.getItem(DEFAULT_COMPANY_KEY)?.trim();
+  if (stored) return stored;
+  return fallbackId();
 }
 
 export function setDefaultCompanyId(id: string): void {
   if (typeof window === "undefined") return;
-  if (!companies.some((c) => c.id === id)) return;
-  localStorage.setItem(DEFAULT_COMPANY_KEY, id);
+  const t = id.trim();
+  if (!t) return;
+  localStorage.setItem(DEFAULT_COMPANY_KEY, t);
   window.dispatchEvent(new Event("cerulean-default-company"));
 }
