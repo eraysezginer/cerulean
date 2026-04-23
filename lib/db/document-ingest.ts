@@ -97,7 +97,7 @@ export async function insertDocumentIngest(p: NewDocumentIngest): Promise<void> 
       \`language\`, \`originalSender\`, \`howReceived\`, \`provenance\`,
       \`optForensic\`, \`optExternal\`, \`optDigest\`, \`suppressFlags\`,
       \`storedFilesJson\`, \`createdAt\`, \`updatedAt\`
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3), CURRENT_TIMESTAMP(3))`,
     [
       p.id,
       p.jobId,
