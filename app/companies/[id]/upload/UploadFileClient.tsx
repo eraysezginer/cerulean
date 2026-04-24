@@ -32,7 +32,7 @@ import { PROCESSING_STEPS_PLACEHOLDER } from "@/lib/upload-pipeline-constants";
 import type { CompanyRow } from "@/data/company-types";
 import type { CompanyFlagDetail } from "@/data/flags";
 import { getFounderEmailsForCompany } from "@/lib/founder-emails";
-import { AiScenario } from "@/lib/ai";
+import { AiScenario } from "@/lib/ai/scenarios";
 
 const ACCEPT = ".pdf,.eml,.msg,.txt,.docx,.xlsx";
 const PICKER_ACCEPT = `${ACCEPT},application/pdf,text/plain,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet`;
@@ -346,20 +346,32 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
   };
 
   const formatAiError = (res: Response, body: string): string => {
-    if (res.status === 503) {
-      return "AI is not configured on the server. Set OPENROUTER_API_KEY in the production .env file, then restart the application.";
-    }
     let msg = "Could not run AI analysis. Please try again.";
     try {
       const j = JSON.parse(body) as { error?: string };
       if (j.error) {
+        if (res.status === 503) {
+          if (j.error.includes("Database error") || j.error.includes("DATABASE_URL")) {
+            return j.error;
+          }
+          if (j.error.includes("OPENROUTER") || j.error.toLowerCase().includes("not configured")) {
+            return "AI is not configured on the server. Set OPENROUTER_API_KEY in the production .env file, then restart the application.";
+          }
+          return j.error;
+        }
         if (j.error.includes("OPENROUTER") || j.error.toLowerCase().includes("not configured")) {
           return "AI is not configured on the server. Set OPENROUTER_API_KEY in the production .env file, then restart the application.";
         }
         msg = j.error;
+      } else if (!res.ok) {
+        msg = `Request failed (HTTP ${res.status}).`;
       }
     } catch {
-      if (body.length < 200 && body.trim()) msg = body.trim();
+      if (body.length < 200 && body.trim()) {
+        msg = body.trim();
+      } else if (!res.ok) {
+        msg = `Request failed (HTTP ${res.status}). The server did not return JSON — often an unhandled error or proxy page. Check server logs for /api/companies/.../ai/analyze.`;
+      }
     }
     return msg;
   };

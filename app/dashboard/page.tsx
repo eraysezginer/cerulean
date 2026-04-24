@@ -5,7 +5,7 @@ import {
   Flag,
   Sparkles,
 } from "lucide-react";
-import { portfolioFlags } from "@/data/flags";
+import { getPortfolioFlagsSorted } from "@/data/flags";
 import type { Confidence } from "@/data/flags";
 import { StatCard } from "@/components/cerulean/StatCard";
 import { ViewSourceButton } from "@/components/cerulean/ViewSourceButton";
@@ -35,7 +35,10 @@ function confidenceBadge(c: Confidence) {
   );
 }
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  const portfolioFlags = await getPortfolioFlagsSorted();
+  const highCount = portfolioFlags.filter((f) => f.confidence === "High").length;
+
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)]">
       <div
@@ -43,13 +46,10 @@ export default function DashboardPage() {
         aria-hidden
       />
       <div className="relative p-8">
-        <p className="mb-1 text-section-label uppercase text-text-3">
-          Overview
-        </p>
+        <p className="mb-1 text-section-label uppercase text-text-3">Overview</p>
         <h1 className="mb-1 text-page-title text-text-1">Dashboard</h1>
         <p className="mb-8 max-w-2xl text-body text-text-2">
-          Portfolio-wide health overview and recent high-confidence flags — at a
-          glance.
+          Portfolio-wide health overview and recent high-confidence flags — at a glance.
         </p>
 
         <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -62,16 +62,16 @@ export default function DashboardPage() {
           />
           <StatCard
             label="Active flags"
-            value={8}
+            value={portfolioFlags.length}
             icon={<Flag strokeWidth={2} />}
-            hint="Open across portfolio"
+            hint="From document ingests (AI)"
             accent="amber"
           />
           <StatCard
             label="High confidence"
-            value={3}
+            value={highCount}
             icon={<Sparkles strokeWidth={2} />}
-            hint="Model score ≥ threshold"
+            hint="Model flag rating"
             accent="teal"
           />
           <StatCard
@@ -89,14 +89,12 @@ export default function DashboardPage() {
         >
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/70 bg-gradient-to-r from-bg-2/80 to-teal-light/30 px-5 py-4">
             <div>
-              <h2
-                id="recent-flags-heading"
-                className="text-card-title text-text-1"
-              >
+              <h2 id="recent-flags-heading" className="text-card-title text-text-1">
                 Recent flags
               </h2>
               <p className="mt-0.5 text-[13px] text-text-2">
-                {portfolioFlags.length} items · sorted by confidence
+                {portfolioFlags.length} item{portfolioFlags.length === 1 ? "" : "s"} from analysis ·
+                sorted by confidence
               </p>
             </div>
             <Link
@@ -107,47 +105,52 @@ export default function DashboardPage() {
             </Link>
           </div>
 
-          <ul className="divide-y divide-border/60">
-            {portfolioFlags.map((row) => (
-              <li
-                key={row.id}
-                className="group flex flex-wrap items-start gap-3 px-5 py-4 transition-colors hover:bg-bg-2/50"
-              >
-                <span
-                  className={cn(
-                    "mt-1.5 size-2.5 shrink-0 rounded-full",
-                    dot[row.dotColor]
-                  )}
-                  title={
-                    row.dotColor === "red"
-                      ? "High attention"
-                      : row.dotColor === "amber"
-                        ? "Watch"
-                        : "FYI"
-                  }
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2 gap-y-1">
-                    <span className="font-semibold text-text-1">
-                      {row.companyName}
-                    </span>
-                    {confidenceBadge(row.confidence)}
+          {portfolioFlags.length === 0 ? (
+            <p className="px-5 py-8 text-body text-text-2">
+              No flags yet. Run <strong>Generate flags and analysis</strong> after an upload to populate
+              this list.
+            </p>
+          ) : (
+            <ul className="divide-y divide-border/60">
+              {portfolioFlags.map((row) => (
+                <li
+                  key={row.id}
+                  className="group flex flex-wrap items-start gap-3 px-5 py-4 transition-colors hover:bg-bg-2/50"
+                >
+                  <span
+                    className={cn(
+                      "mt-1.5 size-2.5 shrink-0 rounded-full",
+                      dot[row.dotColor]
+                    )}
+                    title={
+                      row.dotColor === "red"
+                        ? "High attention"
+                        : row.dotColor === "amber"
+                          ? "Watch"
+                          : "FYI"
+                    }
+                  />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-2 gap-y-1">
+                      <span className="font-semibold text-text-1">{row.companyName}</span>
+                      {confidenceBadge(row.confidence)}
+                    </div>
+                    <p className="mt-1 text-[14px] text-text-2">{row.signalType}</p>
+                    <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-text-3">
+                      <span className="tabular-nums">{row.updateRef}</span>
+                      <span className="hidden min-[480px]:inline" aria-hidden>
+                        ·
+                      </span>
+                      <span className="text-text-3">Document ingest</span>
+                    </div>
                   </div>
-                  <p className="mt-1 text-[14px] text-text-2">{row.signalType}</p>
-                  <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-text-3">
-                    <span className="tabular-nums">{row.updateRef}</span>
-                    <span className="hidden min-[480px]:inline" aria-hidden>
-                      ·
-                    </span>
-                    <span className="text-text-3">Portfolio signal</span>
+                  <div className="shrink-0 pt-0.5">
+                    <ViewSourceButton flagId={row.id} />
                   </div>
-                </div>
-                <div className="shrink-0 pt-0.5">
-                  <ViewSourceButton flagId={row.id} />
-                </div>
-              </li>
-            ))}
-          </ul>
+                </li>
+              ))}
+            </ul>
+          )}
         </section>
       </div>
     </div>

@@ -8,6 +8,11 @@ import {
 } from "@/lib/ai/analysis/document-ingest-ai-messages";
 import { parseIngestAiJson } from "@/lib/ai/analysis/parse-model-flags-json";
 import { readStoredFilesAsMultimodalParts } from "@/lib/ai/analysis/read-stored-upload-files";
+import {
+  isAiTraceEnabled,
+  logAiAnalyzeTrace,
+  summarizeMessagesForLog,
+} from "@/lib/ai/analysis/ai-request-trace";
 import { createChatCompletion, isOpenRouterConfigured } from "@/lib/ai";
 import { selectIngestByJobId, updateIngestFromAiIngestResult } from "@/lib/db/document-ingest";
 
@@ -57,7 +62,19 @@ export async function POST(
       return NextResponse.json({ error: "jobId is required for this scenario" }, { status: 400 });
     }
 
-    const row = await selectIngestByJobId(jobId);
+    let row: Awaited<ReturnType<typeof selectIngestByJobId>>;
+    try {
+      row = await selectIngestByJobId(jobId);
+    } catch (e) {
+      console.error("[ai/analyze] database (select ingest)", e);
+      const detail = e instanceof Error ? e.message : "Database error";
+      return NextResponse.json(
+        {
+          error: `Database error: ${detail}. Check DATABASE_URL, credentials, and that MySQL is running.`,
+        },
+        { status: 503 }
+      );
+    }
     if (!row || row.companyId !== companyId) {
       return NextResponse.json({ error: "Ingest not found" }, { status: 404 });
     }
@@ -115,19 +132,58 @@ export async function POST(
       sizeNotes: textNotes,
     });
 
-    const out = await createChatCompletion({
-      messages,
-      temperature: 0.25,
-      maxTokens: 4_096,
-      openRouterExtras: {
-        response_format: { type: "json_object" },
+    const tracePayloadOut = {
+      openRouter: {
+        temperature: 0.25,
+        maxTokens: 4_096,
+        response_format: { type: "json_object" as const },
       },
-    });
+      messages: summarizeMessagesForLog(messages),
+    };
+    logAiAnalyzeTrace("out", tracePayloadOut);
+
+    let out: Awaited<ReturnType<typeof createChatCompletion>>;
+    try {
+      out = await createChatCompletion({
+        messages,
+        temperature: 0.25,
+        maxTokens: 4_096,
+        openRouterExtras: {
+          response_format: { type: "json_object" },
+        },
+      });
+    } catch (e) {
+      console.error("[ai/analyze] OpenRouter request failed", e);
+      logAiAnalyzeTrace("error", { afterRequestOut: tracePayloadOut, err: String(e) });
+      const detail =
+        e && typeof e === "object" && "message" in e && typeof (e as { message: unknown }).message === "string"
+          ? (e as { message: string }).message
+          : "OpenRouter request failed";
+      return NextResponse.json(
+        {
+          error: `Model request failed: ${detail}`,
+          ...(isAiTraceEnabled()
+            ? { _trace: { request: tracePayloadOut, error: String(e) } }
+            : {}),
+        },
+        { status: 502 }
+      );
+    }
 
     const parsed = parseIngestAiJson(out.content, (n) =>
       assignFlagIds(companyId, jobId, n)
     );
     const flagsJson = JSON.stringify(parsed.flags);
+
+    const tracePayloadIn = {
+      model: out.model,
+      finishReason: out.finishReason,
+      usage: out.usage,
+      /** Raw model text (JSON string) */
+      content: out.content,
+      parsed: { flagCount: parsed.flags.length, analysisLength: parsed.analysis.length },
+    };
+    logAiAnalyzeTrace("in", tracePayloadIn);
 
     try {
       await updateIngestFromAiIngestResult(jobId, {
@@ -155,6 +211,14 @@ export async function POST(
       flags: parsed.flags,
       model: out.model,
       cached: false,
+      ...(isAiTraceEnabled()
+        ? {
+            _trace: {
+              request: tracePayloadOut,
+              response: tracePayloadIn,
+            },
+          }
+        : {}),
     });
   }
 

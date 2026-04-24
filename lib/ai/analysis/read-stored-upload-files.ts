@@ -24,6 +24,13 @@ type GatherResult = { parts: MultimodalUserPart[]; textNotes: string[] };
 
 const IMAGE_EXT = new Set([".png", ".jpg", ".jpeg", ".gif", ".webp"]);
 
+/** Sent as OpenRouter `file` with base64 data URL. Gemini / some providers reject Office MIME types. */
+const NOT_SUPPORTED_AS_FILE_FOR_GEMINI = new Set([
+  ".docx",
+  ".xlsx",
+  ".msg",
+]);
+
 function extOf(name: string): string {
   const i = name.lastIndexOf(".");
   return i >= 0 ? name.slice(i).toLowerCase() : "";
@@ -114,6 +121,19 @@ export async function readStoredFilesAsMultimodalParts(
 
     if (IMAGE_EXT.has(ext)) {
       parts.push({ type: "image_url", image_url: { url: dataUrl } });
+      continue;
+    }
+
+    if (NOT_SUPPORTED_AS_FILE_FOR_GEMINI.has(ext)) {
+      textNotes.push(
+        `- ${name}: not attached as binary (provider often rejects Office/Outlook MIME types). Use PDF for full document content in the model.`
+      );
+      parts.push({
+        type: "text",
+        text:
+          `[File ${name} (${ext}) was not attached as document bytes because the current model provider does not support this format. ` +
+          `Export to PDF (or plain text) and re-run analysis for full coverage. File on disk: ${buf.length} bytes.]`,
+      });
       continue;
     }
 

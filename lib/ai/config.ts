@@ -2,6 +2,11 @@
  * OpenRouter — OpenAI API uyumlu uç nokta.
  * @see https://openrouter.ai/docs#requests
  */
+import { loadEnvConfig } from "@next/env";
+
+// Same as lib/db/pool.ts: `next start` / PM2 may not have loaded `.env` before this module is evaluated.
+loadEnvConfig(process.cwd());
+
 export const OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1";
 
 /** Sunucu tarafında: anahtar yoksa AI çağrıları yapmazsınız. */

@@ -121,32 +121,6 @@ export type FlagHistoryEvent = {
   border: "red" | "amber" | "green" | "neutral";
 };
 
-const kalderFlagHistory: FlagHistoryEvent[] = [
-  {
-    id: "f1",
-    label: "Mar 2019",
-    detail: "Board deck: aggressive revenue recognition noted",
-    level: "Low confidence",
-    border: "neutral",
-  },
-  {
-    id: "f2",
-    label: "Aug 2019",
-    detail: "Update 7: first narrative density gap vs. peers",
-    level: "Medium confidence",
-    border: "amber",
-  },
-  {
-    id: "f3",
-    label: "Feb 2026",
-    detail: "SEC action — see active flags",
-    level: "Material",
-    isMaterial: true,
-    border: "red",
-  },
-];
-
-export function getTimelineForCompany(companyId: string): FlagHistoryEvent[] {
-  if (companyId === "kalder") return kalderFlagHistory;
+export function getTimelineForCompany(_companyId: string): FlagHistoryEvent[] {
   return [];
 }

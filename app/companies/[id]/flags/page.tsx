@@ -12,7 +12,7 @@ export default async function CompanyFlagsPage({
   const company = await getCompanyById(params.id);
   if (!company) notFound();
 
-  const flags = getFlagsForCompany(company.id);
+  const flags = await getFlagsForCompany(company.id);
   const health = company.health;
 
   return (
@@ -25,14 +25,19 @@ export default async function CompanyFlagsPage({
       >
         <h1 className="text-card-title text-text-1">
           {company.name} — {company.series ?? "Private"} · Health:{" "}
-          {health}/100 · {company.flags} active flags
+          {health}/100 · {flags.length} active flag{flags.length === 1 ? "" : "s"} (from document analysis)
         </h1>
       </div>
 
       <div className="space-y-4">
-        {flags.map((f) => (
-          <FlagCard key={f.id} flag={f} />
-        ))}
+        {flags.length === 0 ? (
+          <p className="text-body text-text-2">
+            No flags yet. They appear here after you upload a document and run{" "}
+            <strong>Generate flags and analysis</strong> on the company upload page.
+          </p>
+        ) : (
+          flags.map((f) => <FlagCard key={f.id} flag={f} />)
+        )}
       </div>
     </div>
   );
