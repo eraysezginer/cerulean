@@ -12,21 +12,26 @@ You receive:
 You do NOT receive any pre-existing "flags" from the system. You must output NEW monitoring
 flags derived only from the document(s) and the precomputed context.
 
+Language: All human-readable strings in your JSON response MUST be in **English** — including
+"analysis", and every flag’s "signalType", "description", and "sourceAnchor".
+Use "confidence" exactly as: High | Medium | Low.
+
 Return a single JSON object (no markdown code fences) with this exact shape:
 {
   "flags": [
     {
       "confidence": "High" | "Medium" | "Low",
-      "signalType": "short label",
-      "description": "plain-language explanation for the investment team",
-      "sourceAnchor": "section, page, or quote location"
+      "signalType": "short label in English",
+      "description": "plain-language explanation for the investment team (English)",
+      "sourceAnchor": "section, page, or quote location (English)"
     }
   ],
-  "analysis": "optional concise narrative in English: key risks, consistency notes, follow-up. Use an empty string if not needed."
+  "analysis": "Concise English narrative: key risks, consistency notes, follow-up. Empty string if not needed."
 }
 
 Do not invent specific financial numbers, dates, or names that are not present in the files or
-context. If the file is unreadable or not applicable, return an empty flags array and explain in analysis.`;
+context. If the file is unreadable or not applicable, return an empty flags array and explain in
+English in the "analysis" field.`;
 
 export function buildDocumentIngestAiMessages(input: {
   row: DocumentIngestRow;
@@ -59,7 +64,7 @@ export function buildDocumentIngestAiMessages(input: {
     ...input.multimodalParts,
     {
       type: "text",
-      text: "Respond with the JSON object only, following the system schema.",
+      text: "Respond with the JSON object only, following the system schema. All free-text fields in English. Confidence must be High, Medium, or Low.",
     },
   ];
 

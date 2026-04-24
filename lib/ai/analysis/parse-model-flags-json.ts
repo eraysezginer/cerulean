@@ -4,6 +4,7 @@ function normalizeConfidence(v: unknown): Confidence {
   const s = String(v ?? "").toLowerCase();
   if (s === "high" || s === "h") return "High";
   if (s === "low" || s === "l") return "Low";
+  if (s === "medium" || s === "m") return "Medium";
   return "Medium";
 }
 

@@ -334,7 +334,7 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
       cancelled = true;
       clearInterval(id);
     };
-  }, [phase, ingest]);
+  }, [phase, ingest, company.id]);
 
   const resetForm = () => {
     sessionStorage.removeItem(`cerulean.upload.job.${company.id}`);
@@ -343,6 +343,25 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
     setPolled(null);
     setAiAnalysis(null);
     setAiError(null);
+  };
+
+  const formatAiError = (res: Response, body: string): string => {
+    if (res.status === 503) {
+      return "AI is not configured on the server. Set OPENROUTER_API_KEY in the production .env file, then restart the application.";
+    }
+    let msg = "Could not run AI analysis. Please try again.";
+    try {
+      const j = JSON.parse(body) as { error?: string };
+      if (j.error) {
+        if (j.error.includes("OPENROUTER") || j.error.toLowerCase().includes("not configured")) {
+          return "AI is not configured on the server. Set OPENROUTER_API_KEY in the production .env file, then restart the application.";
+        }
+        msg = j.error;
+      }
+    } catch {
+      if (body.length < 200 && body.trim()) msg = body.trim();
+    }
+    return msg;
   };
 
   const runPostUploadAnalysis = async () => {
@@ -361,14 +380,7 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
       });
       const raw = await res.text();
       if (!res.ok) {
-        let msg = "Could not load AI analysis.";
-        try {
-          const j = JSON.parse(raw) as { error?: string };
-          if (j.error) msg = j.error;
-        } catch {
-          if (raw.length < 200) msg = raw;
-        }
-        setAiError(msg);
+        setAiError(formatAiError(res, raw));
         return;
       }
       const j = JSON.parse(raw) as { analysis?: string; flags?: CompanyFlagDetail[] };
@@ -381,7 +393,7 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
         });
       }
     } catch {
-      setAiError("Network error");
+      setAiError("Network error. Check your connection and try again.");
     } finally {
       setAiLoading(false);
     }
@@ -442,8 +454,8 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
           })}
 
           <div className="w-full rounded-lg bg-teal/[0.05] px-3 py-2 text-center text-[14px] text-teal">
-            Estimated completion: {polled?.eta ?? "45 seconds"} · When ingest finishes, use{" "}
-            <strong>Generate flags &amp; analysis</strong> on the next screen
+            Estimated completion: {polled?.eta ?? "45 seconds"} · On the next screen, run{" "}
+            <strong>Generate flags and analysis</strong> to call the model on your files
           </div>
         </div>
       </div>
@@ -466,7 +478,7 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
           <span className="text-text-3">›</span>
           <span className="text-text-1">Upload file</span>
         </nav>
-        <h1 className="text-[22px] font-semibold leading-tight text-green">Analysis complete</h1>
+        <h1 className="text-[22px] font-semibold leading-tight text-green">Ingest complete</h1>
         <div className="mt-4 rounded-lg border border-border bg-green/[0.06] p-4 border-l-[3px] border-l-green">
           <p className="text-[16px] leading-normal text-text-1">📄 {j.fileName}</p>
           <p className="mt-1 text-[15px] text-text-2">
@@ -477,27 +489,12 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
           </p>
         </div>
 
-        <p className="mb-3 mt-6 text-[13px] font-medium uppercase leading-[1.2] tracking-[0.08em] text-text-3">
-          FLAGS GENERATED FROM THIS DOCUMENT
-        </p>
-        {list.length === 0 ? (
-          <div className="rounded-lg border border-border bg-green-light p-4 text-[16px] text-green">
-            No model flags yet. Document is stored; run <strong>Generate flags &amp; analysis</strong> above to
-            create flags from the file(s) and precomputed context.
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {list.map((f) => (
-              <FlagCard key={f.id} flag={f} />
-            ))}
-          </div>
-        )}
-
         <div className="mt-8 rounded-lg border border-dashed border-teal/35 bg-teal-light/30 p-4">
-          <p className="text-[13px] font-medium uppercase tracking-wide text-text-3">AI flags & analysis</p>
+          <h2 className="text-[15px] font-semibold text-text-1">AI review</h2>
           <p className="mt-1 text-[14px] leading-snug text-text-2">
-            The server sends your stored file(s) plus precomputed monitoring context to the model.
-            The model returns flags and an English analysis; both are saved to this ingest record.
+            We send your stored file(s) and the monitoring context block to the model. It returns
+            monitoring flags and a short written analysis in <strong>English</strong>. Results are
+            saved to this ingest.
           </p>
           <Button
             type="button"
@@ -508,10 +505,10 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
             className="mt-3 h-9 bg-teal text-primary-foreground hover:bg-teal/90"
           >
             {aiLoading
-              ? "Calling model…"
+              ? "Running…"
               : aiAnalysis
-                ? "Regenerate flags & analysis"
-                : "Generate flags & analysis"}
+                ? "Regenerate flags and analysis"
+                : "Generate flags and analysis"}
           </Button>
           {aiError ? <p className="mt-2 text-[14px] text-red">{aiError}</p> : null}
           {aiAnalysis ? (
@@ -520,6 +517,21 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
             </div>
           ) : null}
         </div>
+
+        {list.length > 0 ? (
+          <div className="mt-8 space-y-3">
+            <h2 className="text-[15px] font-semibold text-text-1">Flags from this run</h2>
+            {list.map((f) => (
+              <FlagCard key={f.id} flag={f} />
+            ))}
+          </div>
+        ) : (
+          <p className="mt-6 text-[15px] leading-relaxed text-text-2">
+            No flags have been identified for this document yet. After you use{" "}
+            <strong>Generate flags and analysis</strong>, any flags returned by the model will
+            appear here.
+          </p>
+        )}
 
         <div className="mt-8 flex flex-wrap items-center gap-2">
           <Button

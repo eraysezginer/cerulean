@@ -34,7 +34,10 @@ export async function POST(
 ) {
   if (!isOpenRouterConfigured()) {
     return NextResponse.json(
-      { error: "AI is not configured (OPENROUTER_API_KEY)." },
+      {
+        error:
+          "AI is not configured. Set OPENROUTER_API_KEY in the server environment and restart the app.",
+      },
       { status: 503 }
     );
   }
