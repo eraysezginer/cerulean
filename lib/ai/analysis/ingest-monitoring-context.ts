@@ -31,14 +31,7 @@ export function buildIngestMonitoringContextBlock(
 - SHA-256 (primary file): ${input.primaryHash}
 - Processing time (s): ${input.processingSeconds ?? "—"}
 
-## Placeholder metrics and checks (edit in ingest-monitoring-context.ts)
-
-- Baseline: compare this document to the rolling investor baseline for disclosure depth.
-- Check for unexplained date shifts vs prior public milestones (if any are cited in the text).
-- Note tone and structure drift from the last update in the same sequence.
-
 ## Task instructions
 
-You will also receive the raw uploaded file(s) below. Do not assume any flags or signals were
-pre-computed. Derive everything from the document(s) and this context.`;
+Analyze the updates according to the parameters given in the documents`;
 }
