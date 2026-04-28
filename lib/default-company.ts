@@ -1,12 +1,25 @@
-import { companies } from "@/data/company-seed";
-
 export const DEFAULT_COMPANY_KEY = "cerulean.defaultCompanyId";
 
-const fallbackId = () => companies[0]?.id ?? "kalder";
+const legacySeedCompanyIds = new Set([
+  "kalder",
+  "allhere",
+  "delve",
+  "frank",
+  "nate",
+  "lightspeed",
+  "atlas",
+  "nova",
+]);
+
+const fallbackId = () => "";
 
 export function getDefaultCompanyId(): string {
   if (typeof window === "undefined") return fallbackId();
   const stored = localStorage.getItem(DEFAULT_COMPANY_KEY)?.trim();
+  if (stored && legacySeedCompanyIds.has(stored)) {
+    localStorage.removeItem(DEFAULT_COMPANY_KEY);
+    return fallbackId();
+  }
   if (stored) return stored;
   return fallbackId();
 }

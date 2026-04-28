@@ -1,4 +1,3 @@
-import { companies as seedCompanies } from "./company-seed";
 import type { CompanyRow } from "./company-types";
 import {
   mapCompanyRowToDomain,
@@ -13,11 +12,11 @@ export async function getCompanyById(id: string): Promise<CompanyRow | undefined
   if (row) {
     return mapCompanyRowToDomain(row);
   }
-  return seedCompanies.find((c) => c.id === id);
+  return undefined;
 }
 
-/** Seed portfolio + MySQL `Company` rows. */
+/** Persisted company rows only. */
 export async function getAllCompaniesList(): Promise<CompanyRow[]> {
   const fromDb = await selectCompaniesOrderedByCreatedAt();
-  return [...seedCompanies, ...fromDb.map(mapCompanyRowToDomain)];
+  return fromDb.map(mapCompanyRowToDomain);
 }

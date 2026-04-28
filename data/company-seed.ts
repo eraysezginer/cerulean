@@ -1,73 +1,7 @@
 import type { CompanyRow } from "./company-types";
 
-/** Statik portfolio (MySQL olmadan da UI’da kullanılır; mysql2 içermez). */
-export const companies: CompanyRow[] = [
-  {
-    id: "kalder",
-    name: "Kalder Inc.",
-    health: 24,
-    flags: 5,
-    lastUpdate: "3d",
-    cadence: "Monthly",
-    series: "Series A",
-  },
-  {
-    id: "allhere",
-    name: "AllHere Education",
-    health: 41,
-    flags: 3,
-    lastUpdate: "7d",
-    cadence: "Monthly",
-  },
-  {
-    id: "delve",
-    name: "Delve Systems",
-    health: 38,
-    flags: 4,
-    lastUpdate: "1d",
-    cadence: "Irregular",
-  },
-  {
-    id: "frank",
-    name: "Frank Fintech",
-    health: 72,
-    flags: 1,
-    lastUpdate: "14d",
-    cadence: "Monthly",
-  },
-  {
-    id: "nate",
-    name: "Nate Inc.",
-    health: 12,
-    flags: 7,
-    lastUpdate: "28d",
-    cadence: "Silent",
-  },
-  {
-    id: "lightspeed",
-    name: "Lightspeed App",
-    health: 88,
-    flags: 0,
-    lastUpdate: "2d",
-    cadence: "Weekly",
-  },
-  {
-    id: "atlas",
-    name: "Atlas Platform",
-    health: 65,
-    flags: 2,
-    lastUpdate: "5d",
-    cadence: "Monthly",
-  },
-  {
-    id: "nova",
-    name: "Nova Analytics",
-    health: 79,
-    flags: 1,
-    lastUpdate: "9d",
-    cadence: "Monthly",
-  },
-];
+/** Legacy seed portfolio removed; company lists should come from the database. */
+export const companies: CompanyRow[] = [];
 
 export function isSeedCompanyId(id: string): boolean {
   return companies.some((c) => c.id === id);

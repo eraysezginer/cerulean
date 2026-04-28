@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Star } from "lucide-react";
 import { useDefaultCompanyId } from "@/hooks/use-default-company-id";
 import type { CompanyRow } from "@/data/company-types";
-import { isSeedCompanyId } from "@/data/company-seed";
 import { setDefaultCompanyId } from "@/lib/default-company";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
@@ -138,13 +137,9 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
                 </div>
               </td>
               <td className="p-3 align-middle text-center">
-                {!isSeedCompanyId(c.id) ? (
-                  <div className="inline-flex justify-center">
-                    <CompanyRowActionMenu companyId={c.id} companyName={c.name} />
-                  </div>
-                ) : (
-                  <span className="text-[12px] text-text-3">—</span>
-                )}
+                <div className="inline-flex justify-center">
+                  <CompanyRowActionMenu companyId={c.id} companyName={c.name} />
+                </div>
               </td>
             </tr>
           ))}

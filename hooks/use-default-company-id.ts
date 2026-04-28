@@ -1,13 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { companies } from "@/data/company-seed";
 import { getDefaultCompanyId } from "@/lib/default-company";
 
 export function useDefaultCompanyId() {
-  const [id, setId] = useState<string>(() =>
-    typeof window !== "undefined" ? getDefaultCompanyId() : companies[0].id
-  );
+  const [id, setId] = useState<string>(() => getDefaultCompanyId());
 
   useEffect(() => {
     setId(getDefaultCompanyId());
