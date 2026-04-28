@@ -2,7 +2,6 @@ import { notFound } from "next/navigation";
 import { getCompanyById } from "@/data/companies";
 import { getFlagsForCompany } from "@/data/flags";
 import { FlagCard } from "@/components/cerulean/FlagCard";
-import { cn } from "@/lib/utils";
 
 export default async function CompanyFlagsPage({
   params,
@@ -13,19 +12,13 @@ export default async function CompanyFlagsPage({
   if (!company) notFound();
 
   const flags = await getFlagsForCompany(company.id);
-  const health = company.health;
 
   return (
     <div className="p-8">
-      <div
-        className={cn(
-          "mb-6 rounded-lg border border-border bg-bg-2 p-4 border-l-[3px] pl-4",
-          health < 40 ? "border-l-red" : "border-l-amber"
-        )}
-      >
+      <div className="mb-6 rounded-lg border border-border bg-bg-2 p-4 border-l-[3px] border-l-border pl-4">
         <h1 className="text-card-title text-text-1">
           {company.name} — {company.series ?? "Private"} · Health:{" "}
-          {health}/100 · {flags.length} active flag{flags.length === 1 ? "" : "s"} (from document analysis)
+          -/100 · {flags.length} active flag{flags.length === 1 ? "" : "s"} (from document analysis)
         </h1>
       </div>
 
