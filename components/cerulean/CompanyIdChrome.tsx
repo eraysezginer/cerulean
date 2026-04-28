@@ -31,7 +31,9 @@ export function CompanyIdChrome({
         </div>
         {children}
       </div>
-      {!hideNotes ? <NotesPanel companyName={companyName} notes={notes} /> : null}
+      {!hideNotes ? (
+        <NotesPanel companyId={companyId} companyName={companyName} notes={notes} />
+      ) : null}
     </>
   );
 }

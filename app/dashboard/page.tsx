@@ -145,7 +145,15 @@ export default async function DashboardPage() {
                     </div>
                   </div>
                   <div className="shrink-0 pt-0.5">
-                    <ViewSourceButton flagId={row.id} />
+                    <ViewSourceButton
+                      flag={{
+                        id: row.id,
+                        confidence: row.confidence,
+                        signalType: row.signalType,
+                        description: "Portfolio flag from document analysis.",
+                        sourceAnchor: row.updateRef,
+                      }}
+                    />
                   </div>
                 </li>
               ))}

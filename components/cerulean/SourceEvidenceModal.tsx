@@ -6,20 +6,22 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { Confidence } from "@/data/flags";
-import { getEvidenceForFlag } from "@/data/evidence";
+import type { CompanyFlagDetail } from "@/data/flags";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 
 export function SourceEvidenceModal({
   open,
   onOpenChange,
-  flagId,
+  flag,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  flagId: string;
+  flag: CompanyFlagDetail;
 }) {
-  const ev = getEvidenceForFlag(flagId);
+  const source = flag.source;
+  const hash = source?.primaryHash
+    ? `sha256:${source.primaryHash.slice(0, 12)}...`
+    : "Not available";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -32,76 +34,67 @@ export function SourceEvidenceModal({
             <DialogTitle className="text-card-title text-text-1">
               Source evidence
             </DialogTitle>
-            <ConfidenceBadge level={ev.confidence as Confidence} />
+            <ConfidenceBadge level={flag.confidence} />
           </div>
         </DialogHeader>
         <div className="bg-teal/[0.04] px-4 py-2 text-[13px] text-text-2">
-          {ev.companyName} · {ev.updateLabel} · {ev.paragraph} · {ev.timestamp}
+          {source?.companyName ?? "Company"} · {source?.fileDisplayName ?? "Uploaded document"}
         </div>
         <div className="overflow-y-auto px-4 py-4">
           <p className="mb-2 text-section-label uppercase text-text-3">
-            Flagged excerpt
+            AI flag
           </p>
-          <div className="mb-4 rounded-md border border-red bg-red-light/30 p-3 text-body text-text-2">
-            {ev.flaggedExcerpt}
-          </div>
-          <p className="mb-1 rounded bg-red-light px-2 py-1 text-[13px] text-red">
-            {ev.annotation}
-          </p>
-
-          <p className="mb-2 mt-6 text-section-label uppercase text-text-3">
-            Historical baseline
-          </p>
-          <div className="space-y-2">
-            {ev.historical.map((h, i) => (
-              <div
-                key={i}
-                className="rounded-md border-l-2 border-teal bg-bg-2/60 p-2 opacity-90"
-              >
-                <div className="text-[12px] text-text-3">
-                  {h.update} · {h.date}
-                </div>
-                <p className="text-body text-text-2">{h.quote}</p>
-              </div>
-            ))}
+          <div className="mb-4 rounded-md border border-border bg-bg-2 p-3">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <ConfidenceBadge level={flag.confidence} />
+              <span className="text-card-title text-text-1">{flag.signalType}</span>
+            </div>
+            <p className="text-body text-text-2">{flag.description}</p>
           </div>
 
-          {ev.noteSection && (
-            <>
-              <p className="mb-2 mt-6 text-section-label uppercase text-purple">
-                Your note — informed this analysis
-              </p>
-              <div className="rounded-md border border-purple bg-purple-light/40 p-3">
-                <div className="mb-1 flex justify-between text-[12px] text-text-3">
-                  <span>{ev.noteSection.tag}</span>
-                  <span>{ev.noteSection.date}</span>
-                </div>
-                <p className="text-body text-text-2">{ev.noteSection.text}</p>
-                <span className="mt-2 inline-block text-[10px] text-purple">
-                  ◈ {ev.noteSection.badge}
-                </span>
-              </div>
-            </>
-          )}
+          <p className="mb-2 mt-6 text-section-label uppercase text-text-3">
+            Source anchor
+          </p>
+          <div className="rounded-md border border-teal/30 bg-teal/[0.04] p-3 font-mono text-[12px] leading-snug text-text-2">
+            {flag.sourceAnchor || "No source anchor returned by the model."}
+          </div>
 
           <p className="mb-2 mt-6 text-section-label uppercase text-text-3">
-            Corroborating signals
+            Document metadata
           </p>
-          <div className="rounded-lg bg-bg-2 p-3">
-            <ul className="list-inside list-disc space-y-1 text-body text-text-2">
-              {ev.corroborating.map((c, i) => (
-                <li key={i}>
-                  <span className="font-medium text-text-1">{c.name}:</span>{" "}
-                  {c.detail}
-                </li>
-              ))}
-            </ul>
+          <div className="grid gap-2 rounded-lg bg-bg-2 p-3 text-body text-text-2">
+            <div>
+              <span className="font-medium text-text-1">Update:</span>{" "}
+              {source?.updateLabel || "—"}
+            </div>
+            <div>
+              <span className="font-medium text-text-1">Document type:</span>{" "}
+              {source?.documentTypeName || "—"}
+            </div>
+            <div>
+              <span className="font-medium text-text-1">Document date:</span>{" "}
+              {source?.documentDate || "—"}
+            </div>
+            <div>
+              <span className="font-medium text-text-1">Received:</span>{" "}
+              {source?.receivedDate || "—"}
+            </div>
+            <div>
+              <span className="font-medium text-text-1">AI run:</span>{" "}
+              {source?.aiAnalysisAt
+                ? new Date(source.aiAnalysisAt).toLocaleString()
+                : "—"}
+            </div>
+            <div>
+              <span className="font-medium text-text-1">Model:</span>{" "}
+              {source?.aiAnalysisModel || "—"}
+            </div>
           </div>
         </div>
         <div className="border-t border-border bg-bg-2 px-4 py-2 font-mono text-[11px] text-text-3">
-          <span className="mr-3">src: {ev.footer.sourceHash}</span>
-          <span className="mr-3">notes: {ev.footer.noteIds}</span>
-          <span>{ev.footer.sessionId}</span>
+          <span className="mr-3">src: {hash}</span>
+          <span className="mr-3">job: {source?.jobId ?? "—"}</span>
+          <span>document: {source?.documentId ?? "—"}</span>
         </div>
       </DialogContent>
     </Dialog>

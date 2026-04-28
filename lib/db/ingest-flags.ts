@@ -5,8 +5,15 @@ import getPool from "./pool";
 type IngestFlagsRow = RowDataPacket & {
   jobId: string;
   companyId: string;
+  documentId: string;
   fileDisplayName: string;
   updateLabel: string;
+  documentTypeName: string;
+  documentDate: string;
+  receivedDate: string;
+  primaryHash: string;
+  aiAnalysisAt: Date | null;
+  aiAnalysisModel: string | null;
   flagsJson: string | null;
   legalName: string;
 };
@@ -33,13 +40,29 @@ function confidenceToDot(confidence: Confidence): "red" | "amber" | "grey" {
 export async function getIngestFlagsForCompany(companyId: string): Promise<CompanyFlagDetail[]> {
   const pool = getPool();
   const [rows] = await pool.execute<IngestFlagsRow[]>(
-    `SELECT \`jobId\`, \`flagsJson\` FROM \`DocumentIngest\`
-     WHERE \`companyId\` = ?
-       AND \`status\` = 'complete'
-       AND \`flagsJson\` IS NOT NULL
-       AND \`flagsJson\` != '[]'
-       AND TRIM(\`flagsJson\`) != ''
-     ORDER BY \`updatedAt\` DESC`,
+    `SELECT
+       d.\`jobId\`,
+       d.\`companyId\`,
+       d.\`documentId\`,
+       d.\`fileDisplayName\`,
+       d.\`updateLabel\`,
+       d.\`documentTypeName\`,
+       d.\`documentDate\`,
+       d.\`receivedDate\`,
+       d.\`primaryHash\`,
+       d.\`aiAnalysisAt\`,
+       d.\`aiAnalysisModel\`,
+       d.\`flagsJson\`,
+       c.\`legalName\`
+     FROM \`DocumentIngest\` d
+     INNER JOIN \`Company\` c ON c.\`id\` = d.\`companyId\`
+     WHERE d.\`companyId\` = ?
+       AND d.\`status\` = 'complete'
+       AND d.\`suppressFlags\` = FALSE
+       AND d.\`flagsJson\` IS NOT NULL
+       AND d.\`flagsJson\` != '[]'
+       AND TRIM(d.\`flagsJson\`) != ''
+     ORDER BY d.\`updatedAt\` DESC`,
     [companyId]
   );
   const out: CompanyFlagDetail[] = [];
@@ -48,6 +71,19 @@ export async function getIngestFlagsForCompany(companyId: string): Promise<Compa
       out.push({
         ...f,
         id: `${r.jobId}__${f.id}`,
+        source: {
+          companyName: r.legalName,
+          fileDisplayName: r.fileDisplayName,
+          updateLabel: r.updateLabel,
+          documentTypeName: r.documentTypeName,
+          documentDate: r.documentDate,
+          receivedDate: r.receivedDate,
+          jobId: r.jobId,
+          documentId: r.documentId,
+          primaryHash: r.primaryHash,
+          aiAnalysisAt: r.aiAnalysisAt ? r.aiAnalysisAt.toISOString() : null,
+          aiAnalysisModel: r.aiAnalysisModel,
+        },
       });
     }
   }

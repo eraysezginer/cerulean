@@ -31,7 +31,7 @@ export function buildIngestMonitoringContextBlock(
 - SHA-256 (primary file): ${input.primaryHash}
 - Processing time (s): ${input.processingSeconds ?? "—"}
 
-##R Codes for the analysis
+R Codes for the analysis
 
 This is the engineering specification question. Let me build every formula for every feature precisely.
 
@@ -734,8 +734,6 @@ write_json(
   path = "config/module_thresholds.json",
   auto_unbox = TRUE
 )
-
-cat("\nCalibration written to config/.\n")
 
 How all the parameters connect
 Every parameter marked [CALIBRATE] in the feature formulas feeds into a single calibration loop. The R script reads scores from PostgreSQL, runs the logistic regression, and writes two JSON files. The Python convergence engine reads those JSON files at startup. When you add new corpus data — more fraud cases, more control companies — you re-run the R script and restart Python. The thresholds update automatically without touching any Python code.

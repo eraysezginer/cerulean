@@ -9,12 +9,6 @@ import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { CompanyRowActionMenu } from "@/components/cerulean/CompanyRowActionMenu";
 
-function healthColor(h: number) {
-  if (h < 40) return "text-red font-semibold";
-  if (h <= 70) return "text-amber font-semibold";
-  return "text-green font-semibold";
-}
-
 export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
   const defaultId = useDefaultCompanyId();
 
@@ -28,10 +22,9 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
             <th className="p-3 font-medium">Health</th>
             <th className="p-3 font-medium">Flags</th>
             <th className="p-3 font-medium">Last update</th>
-            <th className="p-3 font-medium">Cadence</th>
-            <th className="p-3 font-medium">Actions</th>
+            <th className="p-3 font-medium">Pages</th>
             <th className="w-14 p-3 text-center font-medium">
-              <span className="sr-only">Row menu</span>
+              Actions
             </th>
           </tr>
         </thead>
@@ -74,9 +67,7 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
                   {defaultId === c.id ? "Default" : "Set default"}
                 </button>
               </td>
-              <td className={cn("p-3 tabular-nums", healthColor(c.health))}>
-                {c.health}
-              </td>
+              <td className="p-3 text-text-2">-</td>
               <td
                 className={cn(
                   "p-3 tabular-nums",
@@ -86,16 +77,6 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
                 {c.flags}
               </td>
               <td className="p-3 text-text-2">{c.lastUpdate}</td>
-              <td
-                className={cn(
-                  "p-3",
-                  c.cadence === "Silent"
-                    ? "font-semibold text-red"
-                    : "text-text-2"
-                )}
-              >
-                {c.cadence}
-              </td>
               <td className="p-3">
                 <div className="flex flex-wrap gap-1.5">
                   <Link

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { getDefaultCompanyId } from "@/lib/default-company";
 
 export function useDefaultCompanyId() {
-  const [id, setId] = useState<string>(() => getDefaultCompanyId());
+  const [id, setId] = useState<string>("");
 
   useEffect(() => {
     setId(getDefaultCompanyId());

@@ -31,12 +31,9 @@ export function FlagCard({ flag }: { flag: CompanyFlagDetail }) {
             </span>
           )}
         </div>
-        <ViewSourceButton flagId={flag.id} />
+        <ViewSourceButton flag={flag} />
       </div>
       <p className="px-3 pb-2 text-body text-text-2">{flag.description}</p>
-      <div className="mx-3 mb-3 rounded bg-bg-3 px-2 py-1.5 font-mono text-source-anchor text-text-3">
-        Source: {flag.sourceAnchor}
-      </div>
     </div>
   );
 }

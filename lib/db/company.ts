@@ -39,7 +39,34 @@ export async function selectCompanyById(id: string): Promise<CompanyDbRow | unde
 export async function selectCompaniesOrderedByCreatedAt(): Promise<CompanyDbRow[]> {
   const pool = getPool();
   const [rows] = await pool.execute<CompanyDbRow[]>(
-    "SELECT * FROM `Company` ORDER BY `createdAt` ASC"
+    `SELECT
+       c.\`id\`,
+       c.\`legalName\`,
+       c.\`health\`,
+       COALESCE(metrics.\`flags\`, 0) AS \`flags\`,
+       DATE_FORMAT(COALESCE(metrics.\`lastUpdateAt\`, c.\`updatedAt\`), '%Y-%m-%d') AS \`lastUpdate\`,
+       c.\`cadence\`,
+       c.\`series\`,
+       c.\`formData\`
+     FROM \`Company\` c
+     LEFT JOIN (
+       SELECT
+         \`companyId\`,
+         SUM(
+           CASE
+             WHEN JSON_VALID(\`flagsJson\`) THEN JSON_LENGTH(\`flagsJson\`)
+             ELSE 0
+           END
+         ) AS \`flags\`,
+         MAX(\`updatedAt\`) AS \`lastUpdateAt\`
+       FROM \`DocumentIngest\`
+       WHERE \`status\` = 'complete'
+         AND \`suppressFlags\` = FALSE
+         AND \`flagsJson\` IS NOT NULL
+         AND TRIM(\`flagsJson\`) != ''
+       GROUP BY \`companyId\`
+     ) metrics ON metrics.\`companyId\` = c.\`id\`
+     ORDER BY c.\`createdAt\` ASC`
   );
   return rows;
 }

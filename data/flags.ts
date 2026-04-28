@@ -20,6 +20,19 @@ export type CompanyFlagDetail = {
   description: string;
   sourceAnchor: string;
   informedByNote?: boolean;
+  source?: {
+    companyName?: string;
+    fileDisplayName: string;
+    updateLabel: string;
+    documentTypeName: string;
+    documentDate: string;
+    receivedDate: string;
+    jobId: string;
+    documentId: string;
+    primaryHash: string;
+    aiAnalysisAt?: string | null;
+    aiAnalysisModel?: string | null;
+  };
 };
 
 const confidenceOrder: Record<Confidence, number> = { High: 0, Medium: 1, Low: 2 };

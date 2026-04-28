@@ -5,5 +5,4 @@ export * from "./notes";
 export * from "./signals";
 export * from "./captable";
 export * from "./timeline";
-export * from "./evidence";
 export * from "./behavioral";

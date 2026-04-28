@@ -1,13 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import type { CompanyFlagDetail } from "@/data/flags";
 import { SourceEvidenceModal } from "./SourceEvidenceModal";
 
 export function ViewSourceButton({
-  flagId,
+  flag,
   className,
 }: {
-  flagId: string;
+  flag: CompanyFlagDetail;
   className?: string;
 }) {
   const [open, setOpen] = useState(false);
@@ -27,7 +28,7 @@ export function ViewSourceButton({
         <SourceEvidenceModal
           open={open}
           onOpenChange={setOpen}
-          flagId={flagId}
+          flag={flag}
         />
       )}
     </>
