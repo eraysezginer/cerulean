@@ -2,8 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { appendContextNoteToMyNotes } from "@/lib/append-context-note";
 import { logDocumentIngestAudit } from "@/lib/ingest-audit";
-import { insertDocumentIngest } from "@/lib/db/document-ingest";
-import { getTimelineDocuments } from "@/lib/timeline-store";
+import { insertDocumentIngest, selectTimelineDocumentsForCompany } from "@/lib/db/document-ingest";
 import { saveUploadFiles } from "@/lib/upload-file-storage";
 
 export const runtime = "nodejs";
@@ -12,7 +11,7 @@ export async function GET(
   _request: Request,
   { params }: { params: { id: string } }
 ) {
-  const docs = getTimelineDocuments(params.id);
+  const docs = await selectTimelineDocumentsForCompany(params.id);
   return NextResponse.json(docs);
 }
 

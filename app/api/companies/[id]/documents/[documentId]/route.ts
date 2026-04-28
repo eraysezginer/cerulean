@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
+import {
+  deleteTimelineDocumentForCompany,
+  selectTimelineDocumentsForCompany,
+} from "@/lib/db/document-ingest";
 import { tryLogDocumentDeleteAudit } from "@/lib/ingest-audit";
-import { getTimelineDocuments, setTimelineDocuments } from "@/lib/timeline-store";
 
 export const runtime = "nodejs";
 
@@ -11,8 +14,8 @@ export async function DELETE(
   { params }: { params: { id: string; documentId: string } }
 ) {
   const { id: companyId, documentId } = params;
-  const list = getTimelineDocuments(companyId);
-  const doc = list.find((d) => d.id === documentId);
+  const docs = await selectTimelineDocumentsForCompany(companyId);
+  const doc = docs.find((d) => d.id === documentId);
   if (!doc) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -30,11 +33,9 @@ export async function DELETE(
       { status: 503 }
     );
   }
-
-  const flagsRemoved = doc.flagCount;
-  const filtered = list.filter((d) => d.id !== documentId);
-  const reindexed = filtered.map((d, i) => ({ ...d, sequencePosition: i }));
-  setTimelineDocuments(companyId, reindexed);
-
-  return NextResponse.json({ success: true, flagsRemoved });
+  const deleted = await deleteTimelineDocumentForCompany(companyId, documentId);
+  if (!deleted) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+  return NextResponse.json({ success: true, flagsRemoved: doc.flagCount });
 }

@@ -49,6 +49,7 @@ CREATE TABLE IF NOT EXISTS `DocumentIngest` (
     `optExternal` BOOLEAN NOT NULL,
     `optDigest` BOOLEAN NOT NULL,
     `suppressFlags` BOOLEAN NOT NULL,
+    `sequencePosition` INTEGER NULL,
     `status` VARCHAR(191) NOT NULL DEFAULT 'processing',
     `processingSeconds` INTEGER NULL,
     `jobStartedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
@@ -61,6 +62,7 @@ CREATE TABLE IF NOT EXISTS `DocumentIngest` (
     `updatedAt` DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3) ON UPDATE CURRENT_TIMESTAMP(3),
     UNIQUE INDEX `DocumentIngest_jobId_key`(`jobId`),
     INDEX `DocumentIngest_companyId_idx`(`companyId`),
+    INDEX `DocumentIngest_company_sequence_idx`(`companyId`, `sequencePosition`),
     INDEX `DocumentIngest_documentId_idx`(`documentId`),
     PRIMARY KEY (`id`)
 ) DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;

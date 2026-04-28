@@ -1,32 +1,11 @@
-"use client";
-
 import { getTimelineForCompany } from "@/data/timeline";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 
 export default function FlagHistoryPage() {
-  const events = getTimelineForCompany("kalder");
+  const events = getTimelineForCompany("");
 
   return (
     <div className="p-8">
-      <div className="mb-6 max-w-xs">
-        <label className="mb-1 block text-[12px] uppercase text-text-3">Company</label>
-        <Select defaultValue="kalder">
-          <SelectTrigger className="border-border bg-bg">
-            <SelectValue placeholder="Company" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="kalder">Kalder Inc.</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <h1 className="mb-2 text-page-title text-text-1">Flag history &amp; timeline</h1>
       <p className="mb-6 text-body text-text-2">
         Reconstruction from stored events only — no sample data. Populate via future pipelines or

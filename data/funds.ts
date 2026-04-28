@@ -36,24 +36,6 @@ export const FUNDS: FundRow[] = [
     status: "active deployment",
     companiesCount: 7,
   },
-  {
-    id: "spv-kalder",
-    name: "SPV — Kalder (2024)",
-    vintage: "2024",
-    size: "$2.1M",
-    vehicle: "SPV",
-    status: "active",
-    companiesCount: 1,
-  },
-  {
-    id: "spv-allhere",
-    name: "SPV — AllHere (2022)",
-    vintage: "2022",
-    size: "$500K",
-    vehicle: "SPV",
-    status: "written off",
-    companiesCount: 1,
-  },
 ];
 
 export function getFundById(id: string): FundRow | undefined {

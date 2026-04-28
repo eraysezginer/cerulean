@@ -1,60 +1,17 @@
-"use client";
-
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { SectionLabel } from "@/components/cerulean/SectionLabel";
 
-const agenda = [
-  {
-    title: "Kalder — omission cluster",
-    summary: "Revenue narrative absent across U11–U14 vs historical baseline.",
-    priority: "High",
-  },
-  {
-    title: "Nate — cadence",
-    summary: "Silent window extended beyond historical band.",
-    priority: "Medium",
-  },
-  {
-    title: "AllHere — metric depth",
-    summary: "Metric count contraction without cross-reference language.",
-    priority: "High",
-  },
-  {
-    title: "Atlas — authorship distance",
-    summary: "Syntactic shift vs founder baseline — corroborating only.",
-    priority: "Low",
-  },
-];
+const agenda: { title: string; summary: string; priority: "High" | "Medium" | "Low" }[] = [];
 
 export default function BoardBriefPage() {
   return (
     <div className="p-8">
-      <div className="mb-6 max-w-xs">
-        <label className="mb-1 block text-[12px] uppercase text-text-3">
-          Company focus
-        </label>
-        <Select defaultValue="kalder">
-          <SelectTrigger className="border-border bg-bg">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="kalder">Kalder Inc.</SelectItem>
-            <SelectItem value="portfolio">Portfolio-wide</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
       <h1 className="mb-6 text-page-title text-text-1">Board meeting brief</h1>
 
       <SectionLabel className="mb-3">Agenda</SectionLabel>
       <div className="mb-8 space-y-3">
-        {agenda.map((a, i) => (
+        {agenda.length === 0 ? (
+          <p className="text-body text-text-2">No board brief agenda items yet.</p>
+        ) : agenda.map((a, i) => (
           <div
             key={i}
             className="rounded-lg border border-border bg-bg-2 p-4"

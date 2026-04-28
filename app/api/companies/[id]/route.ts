@@ -3,7 +3,6 @@ import type { AddCompanyForm } from "@/lib/add-company-types";
 import { initialAddCompanyForm, mapUpdateFrequencyToCadence } from "@/lib/add-company-types";
 import { wizardNotesFromAddCompanyForm } from "@/lib/company-wizard-notes";
 import { deleteCompanyAndRelatedData, selectCompanyById, updateCompanyWithNotes } from "@/lib/db/company";
-import { forgetTimelineForCompany } from "@/lib/timeline-store";
 
 export async function GET(
   _req: Request,
@@ -68,7 +67,6 @@ export async function DELETE(
     if (!removed) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    forgetTimelineForCompany(params.id);
     return NextResponse.json({ ok: true });
   } catch (e) {
     console.error(e);
