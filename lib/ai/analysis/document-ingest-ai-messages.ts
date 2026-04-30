@@ -15,12 +15,14 @@ flags derived only from the document(s) and the precomputed context.
 Language: All human-readable strings in your JSON response MUST be in **English** — including
 "analysis", and every flag’s "signalType", "description", and "sourceAnchor".
 Use "confidence" exactly as: High | Medium | Low.
+Use "polarity" exactly as: negative | positive.
 
 Return a single JSON object (no markdown code fences) with this exact shape:
 {
   "flags": [
     {
       "confidence": "High" | "Medium" | "Low",
+      "polarity": "negative" | "positive",
       "signalType": "short label in English",
       "description": "plain-language explanation for the investment team (English)",
       "sourceAnchor": "section, page, or quote location (English)"
@@ -64,7 +66,7 @@ export function buildDocumentIngestAiMessages(input: {
     ...input.multimodalParts,
     {
       type: "text",
-      text: "Respond with the JSON object only, following the system schema. All free-text fields in English. Confidence must be High, Medium, or Low.",
+      text: "Respond with the JSON object only, following the system schema. All free-text fields in English. Confidence must be High, Medium, or Low. Polarity must be negative or positive.",
     },
   ];
 

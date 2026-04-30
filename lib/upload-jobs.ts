@@ -1,4 +1,4 @@
-import type { CompanyFlagDetail } from "@/data/flags";
+import type { CompanyFlagDetail } from "@/data/flag-types";
 import {
   selectIngestByJobId,
   selectPrimaryHashByJobId,

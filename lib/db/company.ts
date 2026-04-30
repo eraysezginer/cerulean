@@ -9,6 +9,8 @@ export type CompanyDbRow = RowDataPacket & {
   legalName: string;
   health: number;
   flags: number;
+  negativeFlags: number;
+  positiveFlags: number;
   lastUpdate: string;
   cadence: string;
   series: string | null;
@@ -20,7 +22,9 @@ export function mapCompanyRowToDomain(c: CompanyDbRow): CompanyRow {
     id: c.id,
     name: c.legalName,
     health: c.health,
-    flags: c.flags,
+    flags: Number(c.flags ?? 0),
+    negativeFlags: Number(c.negativeFlags ?? c.flags ?? 0),
+    positiveFlags: Number(c.positiveFlags ?? 0),
     lastUpdate: c.lastUpdate,
     cadence: c.cadence as Cadence,
     series: c.series ?? undefined,
@@ -44,6 +48,8 @@ export async function selectCompaniesOrderedByCreatedAt(): Promise<CompanyDbRow[
        c.\`legalName\`,
        c.\`health\`,
        COALESCE(metrics.\`flags\`, 0) AS \`flags\`,
+       COALESCE(metrics.\`negativeFlags\`, 0) AS \`negativeFlags\`,
+       COALESCE(metrics.\`positiveFlags\`, 0) AS \`positiveFlags\`,
        DATE_FORMAT(COALESCE(metrics.\`lastUpdateAt\`, c.\`updatedAt\`), '%Y-%m-%d') AS \`lastUpdate\`,
        c.\`cadence\`,
        c.\`series\`,
@@ -51,20 +57,27 @@ export async function selectCompaniesOrderedByCreatedAt(): Promise<CompanyDbRow[
      FROM \`Company\` c
      LEFT JOIN (
        SELECT
-         \`companyId\`,
-         SUM(
-           CASE
-             WHEN JSON_VALID(\`flagsJson\`) THEN JSON_LENGTH(\`flagsJson\`)
-             ELSE 0
-           END
-         ) AS \`flags\`,
-         MAX(\`updatedAt\`) AS \`lastUpdateAt\`
-       FROM \`DocumentIngest\`
-       WHERE \`status\` = 'complete'
-         AND \`suppressFlags\` = FALSE
-         AND \`flagsJson\` IS NOT NULL
-         AND TRIM(\`flagsJson\`) != ''
-       GROUP BY \`companyId\`
+         d.\`companyId\`,
+         COUNT(*) AS \`flags\`,
+         SUM(CASE WHEN jt.\`polarity\` = 'positive' THEN 1 ELSE 0 END) AS \`positiveFlags\`,
+         SUM(CASE WHEN jt.\`polarity\` = 'positive' THEN 0 ELSE 1 END) AS \`negativeFlags\`,
+         MAX(d.\`updatedAt\`) AS \`lastUpdateAt\`
+       FROM \`DocumentIngest\` d
+       JOIN JSON_TABLE(
+         CASE
+           WHEN JSON_VALID(d.\`flagsJson\`) THEN d.\`flagsJson\`
+           ELSE JSON_ARRAY()
+         END,
+         '$[*]' COLUMNS (
+           \`polarity\` VARCHAR(16) PATH '$.polarity' NULL ON EMPTY NULL ON ERROR
+         )
+       ) jt
+       WHERE d.\`status\` = 'complete'
+         AND d.\`suppressFlags\` = FALSE
+         AND d.\`flagsJson\` IS NOT NULL
+         AND TRIM(d.\`flagsJson\`) != ''
+         AND d.\`flagsJson\` != '[]'
+       GROUP BY d.\`companyId\`
      ) metrics ON metrics.\`companyId\` = c.\`id\`
      ORDER BY c.\`createdAt\` ASC`
   );

@@ -31,9 +31,9 @@ export function buildIngestMonitoringContextBlock(
 - SHA-256 (primary file): ${input.primaryHash}
 - Processing time (s): ${input.processingSeconds ?? "—"}
 
-## Monitoring Analysis Specification
+## Negative Monitoring Analysis Specification
 
-Use this specification as the analysis rubric for the uploaded investor update or document.
+Use this specification as the negative/concern analysis rubric for the uploaded investor update or document.
 
 General rules:
 - T = current uploaded document text.
@@ -272,7 +272,237 @@ Confidence rules:
 - Low confidence: evidence is weak, isolated, or missing required historical context. Prefer no flag unless the document still contains a clear investor-relevant risk.
 - No investor-facing flag: no module meets its flag condition or source evidence is insufficient.
 
+## Positive Monitoring Analysis Specification
+
+Use this specification as the positive/confidence analysis rubric for the uploaded investor update or document. Positive flags should surface what is present, improving, validated, or trust-building. Positive flags are not the absence of negative flags; they require concrete evidence in the uploaded document or available context.
+
+General rules:
+- Return positive flags with polarity = "positive".
+- Use the same T, H, W(T), tokens(T), sents(T), metrics(T), MetricDensity(T), and CAR(T) notation from the negative specification.
+- Do not create a positive flag when minimum history, evidence, or validation requirements are not met.
+- If external validation, My Notes, pre-read intuition, or stored historical metrics are unavailable, skip the dependent positive signal rather than inventing evidence.
+- Positive source anchors must quote or precisely locate the confirming evidence in the uploaded document.
+
+## P1: Specificity Acceleration
+
+Purpose:
+- Detects language becoming increasingly concrete over time, the inverse of M4 narrative abstraction.
+
+Inputs:
+- Current CAR(T).
+- CAR history from prior updates H.
+- Founding baseline CAR from the first min(5, |H|) updates.
+
+Scores:
+- CAR_history = last 4 prior CAR values plus CAR(T).
+- Acceleration = positive CAR slope across that history.
+- CAR_rise = max(0, (CAR(T) - baseline CAR) / max(baseline CAR, 0.001)).
+- P1_score = 0.5 * min(1.0, Acceleration / 0.30) + 0.5 * min(1.0, CAR_rise).
+
+Flag condition:
+- P1_flag = Acceleration > 0.15 with at least 4 prior updates, OR CAR_rise > 0.30 with at least 3 prior updates.
+- A single unusually concrete update is not enough by itself unless it also exceeds the baseline rise rule.
+- Confidence: High when P1_score > 0.75, Medium when P1_score > 0.50, Low when evidence is valid but weaker.
+
+## P2: Commitment Closure Rate
+
+Purpose:
+- Measures whether the founder explicitly closes commitments they previously made.
+
+Inputs:
+- Commitment records from prior updates.
+- Current update T.
+- Recent commitments from the last 8 updates.
+
+Closure evidence:
+- Explicit closure verbs: closed, completed, launched, hired, signed, onboarded, shipped, delivered, announced, raised, finished, achieved, hit.
+- A commitment is closed when the current update contains closure language semantically tied to the original commitment, or the same entity appears with a closure verb.
+
+Scores:
+- recent_commitments = commitments created in the last 8 updates.
+- closed_count = commitments explicitly closed in T or already closed in earlier updates.
+- CCR_P2 = closed_count / total eligible commitments.
+- Compute only when at least 3 tracked commitments exist.
+- P2_score = CCR_P2.
+
+Flag condition:
+- P2_flag = CCR_P2 >= 0.75.
+- Do not surface P2 when there are fewer than 3 eligible commitments.
+- Source anchor should include the closure sentence and, when possible, the original commitment being closed.
+
+## P3: Update Quality Score
+
+Purpose:
+- Composite positive score for metric disclosure depth, language specificity, and commitment acknowledgment.
+
+Inputs:
+- MetricDensity(T) from M1.
+- CAR(T) from M4/P1.
+- CCR_P2 from P2 when available.
+- Prior quality scores for trend if available.
+
+Scores:
+- metric_component = min(1.0, MetricDensity(T) / max(founding baseline MetricDensity, 0.001)).
+- specificity_component = min(1.0, CAR(T) / max(founding baseline CAR, 0.001)).
+- commitment_component = CCR_P2 when available, otherwise neutral 0.5.
+- P3_score = 0.40 * metric_component + 0.35 * specificity_component + 0.25 * commitment_component.
+- P3_slope = trend across the last 4 prior P3 scores plus P3_score.
+
+Flag condition:
+- P3_high_flag = P3_score >= 0.72.
+- P3_rising_flag = P3_slope > 0.05 with at least 4 prior updates.
+- P3_low_flag is a concern, not a positive flag.
+- Positive source anchor should summarize the concrete metrics, specificity, and/or closure evidence supporting the score.
+
+## P4: Thesis Validation Signal
+
+Purpose:
+- Detects when uploaded updates confirm the investor's Market-tagged thesis notes.
+
+Inputs:
+- My Notes records tagged "Market".
+- Current update T.
+- Prior update history H.
+
+Scores:
+- Skip P4 if no Market-tagged thesis notes exist.
+- Build thesis_text from Market notes.
+- TVS_current = weighted semantic and entity alignment between T and thesis_text.
+- Entity match labels: ORG, PRODUCT, GPE, NORP.
+- THESIS_EMBED_THRESHOLD = 0.65.
+- STRONG_CONFIRMATION = 0.70.
+- TVS_slope = trend over the last 6 prior updates plus T.
+
+Flag condition:
+- P4_flag = TVS_current >= 0.70 and at least 3 prior updates exist.
+- If TVS_slope > 0 and P4_flag is true, mention that thesis confirmation is strengthening.
+- Source anchors should be the top sentences in T that align with the thesis.
+
+## P5: Founder Consistency Index
+
+Purpose:
+- Measures consistent founder communication character across cadence, specificity, and commitment tracking.
+
+Inputs:
+- Update timestamps.
+- CAR history.
+- CCR_P2 from P2 when available.
+
+Scores:
+- cadence_consistency = 1.0 - cadence coefficient of variation / 0.35, clamped to [0, 1].
+- specificity_consistency = 1.0 - CAR coefficient of variation / 0.40, clamped to [0, 1].
+- commitment_consistency = CCR_P2 when available, otherwise neutral 0.5.
+- FCI = 0.30 * cadence_consistency + 0.35 * specificity_consistency + 0.35 * commitment_consistency.
+
+Flag condition:
+- P5_flag = FCI >= 0.78 and at least 6 updates exist.
+- If fewer than 6 updates exist, skip P5.
+- Source anchor should reference the current update evidence and summarize the consistency pattern.
+
+## P6: Pre-Read Intuition Capture and Confirmation
+
+Purpose:
+- Compares investor pre-read intuition against forensic outputs after analysis.
+
+Inputs:
+- Pre-read intuition note for this company/update.
+- Current forensic outputs, including positive and negative flags.
+
+Scores:
+- Skip P6 if no pre-read note exists.
+- confirmation alignment >= 0.60 = confirmed.
+- alignment >= 0.55 = partial.
+- alignment < 0.20 = silent or unrelated depending on whether other signals exist.
+
+Flag condition:
+- P6 does not produce a traditional investor-facing flag unless the pre-read note is available and clearly confirmed by source evidence.
+- If surfaced, use polarity = "positive" only for confirmed or partial-confirmed intuition.
+
+## P7: Named Customer Validation
+
+Purpose:
+- Detects persistent named customer or partner claims that are externally corroborated.
+
+Inputs:
+- ORG entities in T.
+- Mention history for named organizations.
+- External validation data if available.
+
+Scores:
+- validation_candidates = ORG entities mentioned persistently in at least 3 updates.
+- verified = found in at least 2 external sources.
+- partially_verified = found in 1 external source.
+- P7_score = verified_count / max(total validation candidates, 1).
+
+Flag condition:
+- P7_positive_flag = at least 2 verified customers and P7_score >= 0.60.
+- If external validation sources are unavailable, do not claim verification.
+- Do not turn unverified customer claims into positive flags.
+
+## P8: Baseline Strengthening
+
+Purpose:
+- Detects when the recent rolling baseline is stronger than the founding baseline.
+
+Inputs:
+- Founding window = first 5 updates.
+- Rolling window = most recent 5 updates.
+- Dimensions: metric_density, CAR, cadence_regularity.
+
+Scores:
+- For each dimension, improvement = (rolling mean - founding mean) / founding mean.
+- P8_score = mean improvement across dimensions.
+- Requires at least 8 updates.
+
+Flag condition:
+- P8_flag = P8_score >= 0.15 and at least 8 updates exist.
+- If P8_score < -0.15, this supports concern analysis, not positive analysis.
+- Source anchor should connect the current document to the improving rolling baseline.
+
+## P9: Disclosure Velocity
+
+Purpose:
+- Detects proactive disclosure of difficulty. This is a trust signal, not a business-performance signal.
+
+Difficulty terms:
+missed, below target, delayed, challenging, harder than expected, took longer, did not close, paused, pivoting, lower than, fell short, not as expected, behind plan, revised our.
+
+Scores:
+- detect_difficulty_disclosure(T) = sentences with difficulty language and specific numbers when specificity is required.
+- P9_score = specificity score when disclosure is proactive; specificity * 0.4 when reactive.
+- A disclosure is proactive when related concern flags were not already active on the same topic.
+
+Flag condition:
+- P9_flag = proactive difficulty disclosure with P9_score >= 0.50.
+- P9 is the only positive signal that can fire on bad news.
+- Source anchor must include the proactive disclosure sentence.
+- If the same topic would otherwise generate a negative flag, downgrade the negative flag confidence when proactive disclosure is clear.
+
+## Positive Convergence and Confidence
+
+Module weights:
+- P1 = 0.70
+- P2 = 0.85
+- P3 = 0.80
+- P4 = 0.75
+- P5 = 0.80
+- P6 = 0.60
+- P7 = 0.90
+- P8 = 0.75
+- P9 = 0.95
+
+Confidence rules:
+- High confidence: 3 or more positive modules trigger in the same 90-day window, or one positive module has strong direct evidence.
+- Medium confidence: 2 positive modules trigger in the same 90-day window, or one module has meaningful but not decisive evidence.
+- Low confidence: evidence is valid but isolated or has limited history.
+- No positive flag: no positive module meets its flag condition, or the source evidence is insufficient.
+
 ## Task instructions
 
-Analyze the uploaded document according to this monitoring specification. Return only flags that are supported by the uploaded document and the available context.`;
+Analyze the uploaded document according to both monitoring specifications:
+- Negative flags: use polarity = "negative".
+- Positive flags: use polarity = "positive".
+- Return only flags supported by the uploaded document and available context.
+- It is valid to return both positive and negative flags for the same document when evidence supports both.
+- It is valid to return an empty flags array when neither specification has sufficient evidence.`;
 }

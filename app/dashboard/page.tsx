@@ -6,15 +6,16 @@ import {
   Sparkles,
 } from "lucide-react";
 import { getPortfolioFlagsSorted } from "@/data/flags";
-import type { Confidence } from "@/data/flags";
+import type { Confidence } from "@/data/flag-types";
 import { StatCard } from "@/components/cerulean/StatCard";
 import { ViewSourceButton } from "@/components/cerulean/ViewSourceButton";
 import { cn } from "@/lib/utils";
 
-const dot: Record<"red" | "amber" | "grey", string> = {
+const dot: Record<"red" | "amber" | "grey" | "green", string> = {
   red: "bg-red shadow-[0_0_0_2px_rgba(204,34,34,0.15)]",
   amber: "bg-amber shadow-[0_0_0_2px_rgba(184,90,26,0.15)]",
   grey: "bg-text-3 shadow-[0_0_0_2px_rgba(163,163,163,0.2)]",
+  green: "bg-green shadow-[0_0_0_2px_rgba(26,122,74,0.16)]",
 };
 
 function confidenceBadge(c: Confidence) {
@@ -38,6 +39,7 @@ function confidenceBadge(c: Confidence) {
 export default async function DashboardPage() {
   const portfolioFlags = await getPortfolioFlagsSorted();
   const highCount = portfolioFlags.filter((f) => f.confidence === "High").length;
+  const positiveCount = portfolioFlags.filter((f) => f.polarity === "positive").length;
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)]">
@@ -64,7 +66,7 @@ export default async function DashboardPage() {
             label="Active flags"
             value={portfolioFlags.length}
             icon={<Flag strokeWidth={2} />}
-            hint="From document ingests (AI)"
+            hint={`${positiveCount} positive signals`}
             accent="amber"
           />
           <StatCard
@@ -94,7 +96,7 @@ export default async function DashboardPage() {
               </h2>
               <p className="mt-0.5 text-[13px] text-text-2">
                 {portfolioFlags.length} item{portfolioFlags.length === 1 ? "" : "s"} from analysis ·
-                sorted by confidence
+                grouped as negative or positive
               </p>
             </div>
             <Link
@@ -123,7 +125,9 @@ export default async function DashboardPage() {
                       dot[row.dotColor]
                     )}
                     title={
-                      row.dotColor === "red"
+                      row.dotColor === "green"
+                        ? "Positive"
+                        : row.dotColor === "red"
                         ? "High attention"
                         : row.dotColor === "amber"
                           ? "Watch"
@@ -134,6 +138,9 @@ export default async function DashboardPage() {
                     <div className="flex flex-wrap items-center gap-2 gap-y-1">
                       <span className="font-semibold text-text-1">{row.companyName}</span>
                       {confidenceBadge(row.confidence)}
+                      <span className="rounded-full bg-bg-3 px-2 py-0.5 text-[11px] font-medium capitalize text-text-2">
+                        {row.polarity}
+                      </span>
                     </div>
                     <p className="mt-1 text-[14px] text-text-2">{row.signalType}</p>
                     <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-text-3">
@@ -149,6 +156,7 @@ export default async function DashboardPage() {
                       flag={{
                         id: row.id,
                         confidence: row.confidence,
+                        polarity: row.polarity,
                         signalType: row.signalType,
                         description: "Portfolio flag from document analysis.",
                         sourceAnchor: row.updateRef,

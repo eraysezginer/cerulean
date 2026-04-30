@@ -21,6 +21,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { flagPolarity } from "@/data/flag-types";
 import type { TimelineDocument, TimelineType } from "@/data/timeline";
 import { getAccentClasses, getCardAccent, typeLetter } from "@/lib/timeline-ui";
 import { cn } from "@/lib/utils";
@@ -597,6 +598,8 @@ function DocumentPreviewDialog({
   const file = doc?.files[fileIndex];
   const previewable = file ? canPreviewFile(file.originalName) : false;
   const flags = doc?.flags ?? [];
+  const negativeFlags = flags.filter((flag) => flagPolarity(flag) === "negative");
+  const positiveFlags = flags.filter((flag) => flagPolarity(flag) === "positive");
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -684,25 +687,9 @@ function DocumentPreviewDialog({
                   </p>
                 </div>
                 {flags.length ? (
-                  <div className="space-y-3">
-                    {flags.map((flag) => (
-                      <div key={flag.id} className="rounded-xl border border-border bg-bg-2 p-3 shadow-sm">
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <span className="rounded-full bg-red-light px-2 py-0.5 text-[11px] font-medium text-red">
-                            {flag.signalType}
-                          </span>
-                          <span className="rounded-full bg-bg-3 px-2 py-0.5 text-[11px] text-text-2">
-                            {flag.confidence} confidence
-                          </span>
-                        </div>
-                        <p className="text-[13px] font-semibold text-text-1">{flag.description}</p>
-                        {flag.sourceAnchor ? (
-                          <p className="mt-2 rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-3">
-                            Source: {flag.sourceAnchor}
-                          </p>
-                        ) : null}
-                      </div>
-                    ))}
+                  <div className="space-y-5">
+                    <TimelineFlagList title="Negative Flags" flags={negativeFlags} />
+                    <TimelineFlagList title="Positive Flags" flags={positiveFlags} />
                   </div>
                 ) : (
                   <div className="flex h-[calc(100%-4rem)] items-center justify-center">
@@ -750,6 +737,57 @@ function DocumentPreviewDialog({
         </div>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function TimelineFlagList({
+  title,
+  flags,
+}: {
+  title: string;
+  flags: TimelineDocument["flags"];
+}) {
+  return (
+    <section>
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="text-[13px] font-semibold text-text-1">{title}</h3>
+        <span className="rounded-full bg-bg-3 px-2 py-0.5 text-[11px] text-text-2">{flags.length}</span>
+      </div>
+      {flags.length ? (
+        <div className="space-y-3">
+          {flags.map((flag) => {
+            const polarity = flagPolarity(flag);
+            return (
+              <div key={flag.id} className="rounded-xl border border-border bg-bg-2 p-3 shadow-sm">
+                <div className="mb-2 flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      "rounded-full px-2 py-0.5 text-[11px] font-medium",
+                      polarity === "positive" ? "bg-green-light text-green" : "bg-red-light text-red"
+                    )}
+                  >
+                    {flag.signalType}
+                  </span>
+                  <span className="rounded-full bg-bg-3 px-2 py-0.5 text-[11px] text-text-2">
+                    {flag.confidence} confidence
+                  </span>
+                </div>
+                <p className="text-[13px] font-semibold text-text-1">{flag.description}</p>
+                {flag.sourceAnchor ? (
+                  <p className="mt-2 rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-3">
+                    Source: {flag.sourceAnchor}
+                  </p>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <p className="rounded-lg border border-dashed border-border bg-bg-2 px-3 py-4 text-[12px] text-text-3">
+          No {title.toLowerCase()} found.
+        </p>
+      )}
+    </section>
   );
 }
 

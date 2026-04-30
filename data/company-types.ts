@@ -5,6 +5,8 @@ export type CompanyRow = {
   name: string;
   health: number;
   flags: number;
+  negativeFlags: number;
+  positiveFlags: number;
   lastUpdate: string;
   cadence: Cadence;
   series?: string;

@@ -1,5 +1,5 @@
 import type { RowDataPacket } from "mysql2";
-import type { CompanyFlagDetail, Confidence, PortfolioFlag } from "@/data/flags";
+import { flagPolarity, type CompanyFlagDetail, type Confidence, type PortfolioFlag } from "@/data/flag-types";
 import getPool from "./pool";
 
 type IngestFlagsRow = RowDataPacket & {
@@ -28,7 +28,11 @@ function parseFlagsArray(s: string | null): CompanyFlagDetail[] {
   }
 }
 
-function confidenceToDot(confidence: Confidence): "red" | "amber" | "grey" {
+function confidenceToDot(
+  confidence: Confidence,
+  polarity: CompanyFlagDetail["polarity"]
+): "red" | "amber" | "grey" | "green" {
+  if (flagPolarity({ polarity }) === "positive") return "green";
   if (confidence === "High") return "red";
   if (confidence === "Medium") return "amber";
   return "grey";
@@ -116,9 +120,10 @@ export async function getIngestFlagsForPortfolio(): Promise<PortfolioFlag[]> {
         companyName: r.legalName,
         signalType: f.signalType,
         confidence: f.confidence,
+        polarity: flagPolarity(f),
         updateRef: r.fileDisplayName || r.updateLabel || "—",
         signalCount: 1,
-        dotColor: confidenceToDot(f.confidence),
+        dotColor: confidenceToDot(f.confidence, f.polarity),
       });
     }
   }

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { getCompanyById } from "@/data/companies";
-import type { CompanyFlagDetail } from "@/data/flags";
+import type { CompanyFlagDetail } from "@/data/flag-types";
 import { AiScenario } from "@/lib/ai/scenarios";
 import {
   assignFlagIds,

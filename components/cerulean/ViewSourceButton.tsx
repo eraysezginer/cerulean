@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { CompanyFlagDetail } from "@/data/flags";
+import type { CompanyFlagDetail } from "@/data/flag-types";
 import { SourceEvidenceModal } from "./SourceEvidenceModal";
 
 export function ViewSourceButton({

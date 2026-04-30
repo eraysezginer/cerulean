@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { FlagCard } from "@/components/cerulean/FlagCard";
+import { FlagGroups } from "@/components/cerulean/FlagGroups";
 import { ChipGroup } from "@/components/cerulean/ChipGroup";
 import {
   FormField,
@@ -30,7 +30,7 @@ import { cn } from "@/lib/utils";
 import type { PipelineStep } from "@/lib/upload-pipeline-constants";
 import { PROCESSING_STEPS_PLACEHOLDER } from "@/lib/upload-pipeline-constants";
 import type { CompanyRow } from "@/data/company-types";
-import type { CompanyFlagDetail } from "@/data/flags";
+import type { CompanyFlagDetail } from "@/data/flag-types";
 import { getFounderEmailsForCompany } from "@/lib/founder-emails";
 import { AiScenario } from "@/lib/ai/scenarios";
 
@@ -180,6 +180,7 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
   const [userSetTemporal, setUserSetTemporal] = useState(false);
   const [temporal, setTemporal] = useState<"in-sequence" | "historical" | "reference">("in-sequence");
   const [updateLabel, setUpdateLabel] = useState("");
+  const [updateLabelError, setUpdateLabelError] = useState<string | undefined>();
   const [documentDate, setDocumentDate] = useState("");
   const [receivedDate, setReceivedDate] = useState("");
   const [dateErrors, setDateErrors] = useState<{
@@ -267,6 +268,12 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
       setSubmitError("Add at least one file in a supported format.");
       return;
     }
+    const cleanUpdateLabel = updateLabel.trim();
+    if (!cleanUpdateLabel) {
+      setUpdateLabelError("Update number or label is required.");
+      setSubmitError("Enter an update number or label before uploading.");
+      return;
+    }
     const nextDateErrors: typeof dateErrors = {};
     if (!documentDate) {
       nextDateErrors.documentDate = "Document date is required.";
@@ -286,7 +293,7 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
     fd.append("companyName", company.name);
     fd.append("documentTypeName", DOC_TYPES.find((d) => d.id === docType)?.name ?? "Investor update");
     fd.append("temporalType", temporal);
-    fd.append("updateLabel", updateLabel);
+    fd.append("updateLabel", cleanUpdateLabel);
     fd.append("documentDate", documentDate);
     fd.append("receivedDate", receivedDate);
     fd.append("language", language);
@@ -547,11 +554,8 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
         </div>
 
         {list.length > 0 ? (
-          <div className="mt-8 space-y-3">
-            <h2 className="text-[15px] font-semibold text-text-1">Flags from this run</h2>
-            {list.map((f) => (
-              <FlagCard key={f.id} flag={f} />
-            ))}
+          <div className="mt-8">
+            <FlagGroups flags={list} />
           </div>
         ) : (
           <p className="mt-6 text-[15px] leading-relaxed text-text-2">
@@ -673,11 +677,15 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
           <TwoColumnRow>
             <FormField
               size="lg"
-              label="Update number or label"
-              hint="— sets temporal position"
+              label="Update number or label *"
+              hint="— required; shown in source metadata"
               value={updateLabel}
-              onChange={setUpdateLabel}
+              onChange={(v) => {
+                setUpdateLabel(v);
+                setUpdateLabelError(undefined);
+              }}
               placeholder="Update 7 · Q3 2024 · October investor letter"
+              error={updateLabelError}
             />
             <DatePickerField
               size="lg"

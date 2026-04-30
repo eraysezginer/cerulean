@@ -68,13 +68,31 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
                 </button>
               </td>
               <td className="p-3 text-text-2">-</td>
-              <td
-                className={cn(
-                  "p-3 tabular-nums",
-                  c.flags > 3 ? "font-semibold text-red" : "text-text-2"
-                )}
-              >
-                {c.flags}
+              <td className="p-3">
+                <div className="flex flex-wrap gap-1.5">
+                  <Link
+                    href={`/companies/${c.id}/flags?polarity=negative`}
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
+                      c.negativeFlags > 0
+                        ? "bg-red-light text-red"
+                        : "bg-bg-3 text-text-3"
+                    )}
+                  >
+                    {c.negativeFlags} negative
+                  </Link>
+                  <Link
+                    href={`/companies/${c.id}/flags?polarity=positive`}
+                    className={cn(
+                      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium tabular-nums",
+                      c.positiveFlags > 0
+                        ? "bg-green-light text-green"
+                        : "bg-bg-3 text-text-3"
+                    )}
+                  >
+                    {c.positiveFlags} positive
+                  </Link>
+                </div>
               </td>
               <td className="p-3 text-text-2">{c.lastUpdate}</td>
               <td className="p-3">

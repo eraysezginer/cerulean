@@ -1,4 +1,4 @@
-import type { Confidence } from "@/data/flags";
+import type { Confidence } from "@/data/flag-types";
 import { cn } from "@/lib/utils";
 
 const styles: Record<

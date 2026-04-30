@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
-import type { CompanyFlagDetail } from "@/data/flags";
+import type { CompanyFlagDetail } from "@/data/flag-types";
 import type { TimelineDocument, TimelineType } from "@/data/timeline";
 import type { StoredFile } from "@/lib/upload-file-storage";
 import getPool from "./pool";

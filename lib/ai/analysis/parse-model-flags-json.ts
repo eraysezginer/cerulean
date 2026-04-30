@@ -1,4 +1,4 @@
-import type { CompanyFlagDetail, Confidence } from "@/data/flags";
+import type { CompanyFlagDetail, Confidence, FlagPolarity } from "@/data/flag-types";
 
 function normalizeConfidence(v: unknown): Confidence {
   const s = String(v ?? "").toLowerCase();
@@ -6,6 +6,12 @@ function normalizeConfidence(v: unknown): Confidence {
   if (s === "low" || s === "l") return "Low";
   if (s === "medium" || s === "m") return "Medium";
   return "Medium";
+}
+
+function normalizePolarity(v: unknown): FlagPolarity {
+  const s = String(v ?? "").trim().toLowerCase();
+  if (s === "positive" || s === "pos" || s === "upside" || s === "strength") return "positive";
+  return "negative";
 }
 
 function stripFences(raw: string): string {
@@ -52,6 +58,7 @@ export function parseIngestAiJson(
     return {
       id: ids[i] ?? `flag-${i}`,
       confidence: normalizeConfidence(o.confidence),
+      polarity: normalizePolarity(o.polarity ?? o.sentiment ?? o.type),
       signalType: String(o.signalType ?? "Signal").slice(0, 200),
       description: String(o.description ?? "").slice(0, 4_000),
       sourceAnchor: String(o.sourceAnchor ?? "—").slice(0, 500),

@@ -77,9 +77,15 @@ export async function POST(
 
     const documentTypeName = String(form.get("documentTypeName") ?? "Investor update");
     const temporalType = String(form.get("temporalType") ?? "historical");
-    const updateLabel = String(form.get("updateLabel") ?? "");
+    const updateLabel = String(form.get("updateLabel") ?? "").trim();
     const documentDate = String(form.get("documentDate") ?? "");
     const receivedDate = String(form.get("receivedDate") ?? "");
+    if (!updateLabel) {
+      return NextResponse.json(
+        { error: "Update number or label is required." },
+        { status: 400 }
+      );
+    }
     if (!isYyyyMmDd(documentDate) || !isYyyyMmDd(receivedDate)) {
       return NextResponse.json(
         { error: "Document date and received date are required." },

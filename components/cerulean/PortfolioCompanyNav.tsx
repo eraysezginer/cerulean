@@ -7,13 +7,26 @@ export function PortfolioCompanyNav() {
   const companyId = useDefaultCompanyId();
   const companyHref = (section: string) =>
     companyId ? `/companies/${companyId}/${section}` : "/companies";
+  const flagsHref = companyHref("flags");
 
   return (
     <>
       <NavItem
-        href={companyHref("flags")}
+        href={flagsHref}
         label="Company: flags"
-        isActiveMatch={(p) => /\/companies\/[^/]+\/flags$/.test(p)}
+        isActiveMatch={(p, q) => /\/companies\/[^/]+\/flags$/.test(p) && !q.get("polarity")}
+      />
+      <NavItem
+        href={`${flagsHref}?polarity=negative`}
+        label="Negative Flags"
+        level={1}
+        isActiveMatch={(p, q) => /\/companies\/[^/]+\/flags$/.test(p) && q.get("polarity") === "negative"}
+      />
+      <NavItem
+        href={`${flagsHref}?polarity=positive`}
+        label="Positive Flags"
+        level={1}
+        isActiveMatch={(p, q) => /\/companies\/[^/]+\/flags$/.test(p) && q.get("polarity") === "positive"}
       />
       <NavItem
         href={companyHref("upload")}

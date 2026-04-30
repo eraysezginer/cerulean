@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import type { CompanyFlagDetail } from "@/data/flags";
+import { flagPolarity, type CompanyFlagDetail } from "@/data/flag-types";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 
 export function SourceEvidenceModal({
@@ -19,6 +19,7 @@ export function SourceEvidenceModal({
   flag: CompanyFlagDetail;
 }) {
   const source = flag.source;
+  const polarity = flagPolarity(flag);
   const hash = source?.primaryHash
     ? `sha256:${source.primaryHash.slice(0, 12)}...`
     : "Not available";
@@ -35,6 +36,9 @@ export function SourceEvidenceModal({
               Source evidence
             </DialogTitle>
             <ConfidenceBadge level={flag.confidence} />
+            <span className="rounded-full bg-bg-3 px-2 py-0.5 text-[11px] font-medium capitalize text-text-2">
+              {polarity}
+            </span>
           </div>
         </DialogHeader>
         <div className="bg-teal/[0.04] px-4 py-2 text-[13px] text-text-2">
@@ -47,6 +51,9 @@ export function SourceEvidenceModal({
           <div className="mb-4 rounded-md border border-border bg-bg-2 p-3">
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <ConfidenceBadge level={flag.confidence} />
+              <span className="rounded bg-bg-3 px-1.5 py-0.5 text-[10px] font-medium capitalize text-text-2">
+                {polarity}
+              </span>
               <span className="text-card-title text-text-1">{flag.signalType}</span>
             </div>
             <p className="text-body text-text-2">{flag.description}</p>
