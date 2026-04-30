@@ -3,6 +3,7 @@ import path from "node:path";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import type { CompanyFlagDetail } from "@/data/flags";
 import type { TimelineDocument, TimelineType } from "@/data/timeline";
+import type { StoredFile } from "@/lib/upload-file-storage";
 import getPool from "./pool";
 
 export type DocumentIngestRow = RowDataPacket & {
@@ -118,9 +119,19 @@ function timelineTypeFromDocumentType(name: string): TimelineType {
   return "investor_update";
 }
 
+function parseStoredFiles(s: string): StoredFile[] {
+  try {
+    const arr = JSON.parse(s) as StoredFile[];
+    return Array.isArray(arr) ? arr : [];
+  } catch {
+    return [];
+  }
+}
+
 function rowToTimelineDocument(row: TimelineIngestRow, fallbackPosition: number): TimelineDocument {
   const flags = toBool(row.suppressFlags) ? [] : parseFlagsArray(row.flagsJson);
   const type = timelineTypeFromDocumentType(row.documentTypeName);
+  const storedFiles = parseStoredFiles(row.storedFilesJson);
   return {
     id: row.documentId,
     companyId: row.companyId,
@@ -134,6 +145,12 @@ function rowToTimelineDocument(row: TimelineIngestRow, fallbackPosition: number)
     hash: row.primaryHash,
     isReference: row.temporalType === "reference" || type === "reference" || type === "ppm",
     language: row.language || "—",
+    files: storedFiles.map((f, i) => ({
+      originalName: f.originalName,
+      size: f.size,
+      viewUrl: `/api/companies/${encodeURIComponent(row.companyId)}/documents/${encodeURIComponent(row.documentId)}/file?index=${i}`,
+    })),
+    flags,
   };
 }
 
@@ -214,6 +231,32 @@ export async function selectPrimaryHashByJobId(jobId: string): Promise<string | 
   );
   const h = (rows[0] as { primaryHash?: string } | undefined)?.primaryHash;
   return h ?? null;
+}
+
+export async function selectStoredFileForTimelineDocument(input: {
+  companyId: string;
+  documentId: string;
+  index: number;
+}): Promise<StoredFile | null> {
+  const pool = getPool();
+  const [rows] = await pool.execute<RowDataPacket[]>(
+    "SELECT `storedFilesJson` FROM `DocumentIngest` WHERE `companyId` = ? AND `documentId` = ? LIMIT 1",
+    [input.companyId, input.documentId]
+  );
+  const raw = (rows[0] as { storedFilesJson?: string } | undefined)?.storedFilesJson;
+  if (!raw) return null;
+  const files = parseStoredFiles(raw);
+  return files[input.index] ?? null;
+}
+
+export function absoluteStoredFilePath(file: StoredFile): string | null {
+  const root = process.cwd();
+  const abs = path.resolve(root, file.relativePath);
+  const uploadsRoot = path.resolve(root, "data", "storage", "uploads");
+  if (abs !== uploadsRoot && !abs.startsWith(`${uploadsRoot}${path.sep}`)) {
+    return null;
+  }
+  return abs;
 }
 
 export async function insertDocumentIngest(p: NewDocumentIngest): Promise<void> {

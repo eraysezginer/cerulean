@@ -1,3 +1,5 @@
+import type { CompanyFlagDetail } from "@/data/flags";
+
 export type TimelineType =
   | "investor_update"
   | "ppm"
@@ -21,6 +23,12 @@ export type TimelineDocument = {
   hash: string;
   isReference: boolean;
   language: string;
+  files: {
+    originalName: string;
+    size: number;
+    viewUrl: string;
+  }[];
+  flags: CompanyFlagDetail[];
 };
 
 /** Flag history / timeline (legacy UI) — not the document matrix */
