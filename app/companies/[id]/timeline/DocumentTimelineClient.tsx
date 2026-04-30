@@ -11,22 +11,13 @@ import {
 } from "@dnd-kit/core";
 import { arrayMove, SortableContext, horizontalListSortingStrategy, useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { motion, useSpring } from "framer-motion";
 import Link from "next/link";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import type { TimelineDocument, TimelineType } from "@/data/timeline";
 import { getAccentClasses, getCardAccent, typeLetter } from "@/lib/timeline-ui";
 import { cn } from "@/lib/utils";
-
-const QUARTERS = [
-  { label: "Q2 2024", p: 0.08 },
-  { label: "Q3 2024", p: 0.28 },
-  { label: "Q4 2024", p: 0.45 },
-  { label: "Q1 2025", p: 0.62 },
-  { label: "Q4 2025", p: 0.9 },
-] as const;
 
 const DOT_HEX: Record<ReturnType<typeof getCardAccent>, string> = {
   teal: "#0B7275",
@@ -56,18 +47,56 @@ function fmtShort(d: string): string {
   return x.toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "2-digit" });
 }
 
-function fmtTipMonthYear(d: string): string {
+function parseDocTime(d: string): number | null {
   const x = new Date(d + (d.length <= 10 ? "T12:00:00" : ""));
-  if (Number.isNaN(x.getTime())) return d;
-  return x.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  return Number.isNaN(x.getTime()) ? null : x.getTime();
 }
 
-type Tier = "h" | "n" | "d";
+function addDays(ms: number, days: number): number {
+  return ms + days * 24 * 60 * 60 * 1000;
+}
 
-function tierSizes(tier: Tier) {
-  if (tier === "h") return { w: 120, h: 148, stem: 52, topBorder: 4 };
-  if (tier === "n") return { w: 78, h: 98, stem: 38, topBorder: 3 };
-  return { w: 64, h: 80, stem: 28, topBorder: 3 };
+function formatTick(ms: number, range: number): string {
+  if (range <= 90 * 24 * 60 * 60 * 1000) {
+    return new Date(ms).toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+  }
+  return new Date(ms).toLocaleDateString("en-US", {
+    month: "short",
+    year: "numeric",
+  });
+}
+
+function buildTimelineScale(docs: TimelineDocument[]) {
+  const dated = docs
+    .map((d) => ({ id: d.id, t: parseDocTime(d.documentDate) }))
+    .filter((d): d is { id: string; t: number } => d.t != null);
+  if (dated.length === 0) {
+    return { ticks: [] as { label: string; p: number }[], positions: new Map<string, number>() };
+  }
+
+  const minT = Math.min(...dated.map((d) => d.t));
+  const maxT = Math.max(...dated.map((d) => d.t));
+  const span = Math.max(1, maxT - minT);
+  const pad = Math.max(span * 0.12, 7 * 24 * 60 * 60 * 1000);
+  const start = addDays(minT - pad, -1);
+  const end = addDays(maxT + pad, 1);
+  const range = Math.max(1, end - start);
+
+  const positions = new Map<string, number>();
+  for (const d of dated) {
+    positions.set(d.id, Math.min(0.96, Math.max(0.04, (d.t - start) / range)));
+  }
+
+  const tickCount = Math.min(6, Math.max(2, dated.length));
+  const ticks = Array.from({ length: tickCount }, (_, i) => {
+    const p = tickCount === 1 ? 0.5 : i / (tickCount - 1);
+    return { label: formatTick(start + p * range, range), p };
+  });
+
+  return { ticks, positions };
 }
 
 export function DocumentTimelineClient({
@@ -80,13 +109,10 @@ export function DocumentTimelineClient({
   const [docs, setDocs] = useState<TimelineDocument[] | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [reorder, setReorder] = useState(false);
-  const [clientX, setClientX] = useState<number | null>(null);
-  const [hoverI, setHoverI] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<TimelineDocument | null>(null);
   const [deletePos, setDeletePos] = useState<{ top: number; left: number } | null>(null);
   const [toast, setToast] = useState<"ok" | "err" | null>(null);
   const [activeDrag, setActiveDrag] = useState<TimelineDocument | null>(null);
-  const trackRef = useRef<HTMLDivElement>(null);
 
   const load = useCallback(async () => {
     setErr(null);
@@ -103,59 +129,7 @@ export function DocumentTimelineClient({
   }, [load]);
 
   const sensors = useSensors(useSensor(MouseSensor, { activationConstraint: { distance: 8 } }));
-
-  const onMouseMove = useCallback(
-    (e: React.MouseEvent) => {
-      if (reorder) return;
-      const t = trackRef.current;
-      if (!t) return;
-      const r = t.getBoundingClientRect();
-      setClientX(e.clientX - r.left + t.scrollLeft);
-    },
-    [reorder]
-  );
-
-  const onMouseLeave = useCallback(() => {
-    setClientX(null);
-    setHoverI(null);
-  }, []);
-
-  useLayoutEffect(() => {
-    if (reorder) {
-      setHoverI(null);
-      return;
-    }
-    if (clientX == null || !docs?.length) {
-      setHoverI(null);
-      return;
-    }
-    const t = trackRef.current;
-    if (!t) return;
-    const W = t.scrollWidth;
-    const n = docs.length;
-    const slot = W / n;
-    let best = 0;
-    let bestD = Number.POSITIVE_INFINITY;
-    for (let i = 0; i < n; i++) {
-      const d = Math.abs(clientX - (i + 0.5) * slot);
-      if (d < bestD) {
-        bestD = d;
-        best = i;
-      }
-    }
-    setHoverI(bestD < 72 ? best : null);
-  }, [clientX, docs, reorder]);
-
-  const tierOf = useCallback(
-    (i: number): Tier => {
-      if (reorder) return "d";
-      if (hoverI == null) return "d";
-      if (i === hoverI) return "h";
-      if (i === hoverI - 1 || i === hoverI + 1) return "n";
-      return "d";
-    },
-    [hoverI, reorder]
-  );
+  const timeline = useMemo(() => buildTimelineScale(docs ?? []), [docs]);
 
   const patchReorder = useCallback(
     async (newIds: string[]) => {
@@ -279,14 +253,10 @@ export function DocumentTimelineClient({
   }
 
   const n = docs.length;
-  const trackW = Math.max(1400, n * 100);
+  const trackW = Math.max(980, n * 180);
 
   return (
-    <div
-      className="relative min-h-0 flex-1 bg-bg p-6"
-      onMouseMove={onMouseMove}
-      onMouseLeave={onMouseLeave}
-    >
+    <div className="relative min-h-0 flex-1 bg-bg p-6">
       {deleteTarget ? (
         <div
           role="presentation"
@@ -350,11 +320,10 @@ export function DocumentTimelineClient({
         </div>
       ) : (
         <div
-          className="mb-3 flex w-full items-center justify-center py-1.5 text-[11px] text-teal"
-          style={{ minHeight: 26, backgroundColor: "rgba(11, 114, 117, 0.04)" }}
+          className="mb-4 flex w-full items-center justify-center rounded-xl border border-teal/15 bg-teal/[0.04] px-3 py-2 text-[12px] text-teal"
         >
           {stats.n} documents · {stats.inv} investor updates · {stats.ref} reference documents · {stats.flags}{" "}
-          active flags · Hover to expand · Drag to reorder · × to remove
+          active flags · Positions follow document date
         </div>
       )}
 
@@ -384,55 +353,85 @@ export function DocumentTimelineClient({
           </DragOverlay>
         </DndContext>
       ) : (
-        <div className="overflow-x-auto pb-4">
+        <div className="space-y-5">
+          <div className="overflow-x-auto rounded-2xl border border-border bg-bg-2 p-4 shadow-sm">
           <div
-            ref={trackRef}
             className="relative select-none"
-            style={{ minWidth: trackW, height: 300, margin: "0 12px" }}
+            style={{ minWidth: trackW, height: 148 }}
           >
             <div
-              className="pointer-events-none absolute left-0 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-white"
-              style={{ top: 150, background: "#0B7275" }}
+              className="pointer-events-none absolute left-0 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-white shadow-sm"
+              style={{ top: 72, background: "#0B7275" }}
             />
             <div
-              className="pointer-events-none absolute right-0 h-2.5 w-2.5 -translate-y-1/2 rounded-full border-2 border-white"
-              style={{ top: 150, background: "#0B7275" }}
+              className="pointer-events-none absolute right-0 h-3 w-3 -translate-y-1/2 rounded-full border-2 border-white shadow-sm"
+              style={{ top: 72, background: "#0B7275" }}
             />
             <div
-              className="absolute right-0 left-0 h-0.5"
-              style={{ top: 150, backgroundColor: "#0B7275" }}
+              className="absolute right-0 left-0 h-0.5 rounded-full"
+              style={{ top: 72, backgroundColor: "rgba(11, 114, 117, 0.35)" }}
             />
-            {QUARTERS.map((q) => (
+            {timeline.ticks.map((q) => (
               <div
                 key={q.label}
                 className="pointer-events-none absolute flex flex-col items-center"
-                style={{ left: `${q.p * 100}%`, top: 150, transform: "translateX(-50%)" }}
+                style={{ left: `${q.p * 100}%`, top: 72, transform: "translateX(-50%)" }}
               >
-                <div className="h-2 w-px" style={{ backgroundColor: "rgba(11, 114, 117, 0.45)" }} />
-                <span className="mt-1.5 text-[11px] text-text-3">{q.label}</span>
+                <div className="h-4 w-px" style={{ backgroundColor: "rgba(11, 114, 117, 0.35)" }} />
+                <span className="mt-2 rounded-full bg-bg px-2 py-0.5 text-[11px] text-text-3 shadow-sm">
+                  {q.label}
+                </span>
               </div>
             ))}
 
             {docs.map((d, i) => {
-              const above = i % 2 === 0;
+              const position = timeline.positions.get(d.id) ?? (i + 0.5) / n;
+              const accent = getCardAccent(d);
+              const hex = DOT_HEX[accent];
               return (
                 <div
                   key={d.id}
-                  className="absolute top-0 bottom-0 w-0"
-                  style={{ left: `${((i + 0.5) / n) * 100}%` }}
+                  className="absolute flex -translate-x-1/2 flex-col items-center gap-1"
+                  style={{ left: `${position * 100}%`, top: i % 2 === 0 ? 31 : 70 }}
                 >
-                  <div className="relative h-full w-[200px] -translate-x-1/2">
-                    <StackCard
-                      doc={d}
-                      above={above}
-                      tier={tierOf(i)}
-                      dim={deleteTarget?.id === d.id}
-                      onDelete={openDelete}
-                    />
-                  </div>
+                  {i % 2 === 0 ? (
+                    <span className="rounded-full bg-bg px-1.5 py-0.5 text-[10px] font-medium text-text-2 shadow-sm">
+                      {fmtShort(d.documentDate)}
+                    </span>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={(e) => openDelete(d, e.currentTarget)}
+                    className={cn(
+                      "flex h-9 w-9 items-center justify-center rounded-full border-2 border-white text-[12px] font-semibold text-white shadow-md transition-transform hover:scale-110",
+                      deleteTarget?.id === d.id && "opacity-30"
+                    )}
+                    style={{ backgroundColor: hex }}
+                    aria-label={`Delete ${d.label}`}
+                    title={`${d.label} · ${fmtShort(d.documentDate)}`}
+                  >
+                    {typeLetter(d)}
+                  </button>
+                  {i % 2 !== 0 ? (
+                    <span className="rounded-full bg-bg px-1.5 py-0.5 text-[10px] font-medium text-text-2 shadow-sm">
+                      {fmtShort(d.documentDate)}
+                    </span>
+                  ) : null}
                 </div>
               );
             })}
+          </div>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            {docs.map((d) => (
+              <TimelineDocumentCard
+                key={d.id}
+                doc={d}
+                dim={deleteTarget?.id === d.id}
+                onDelete={openDelete}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -501,50 +500,53 @@ export function DocumentTimelineClient({
   );
 }
 
-function StackCard({
+function TimelineDocumentCard({
   doc,
-  above,
-  tier,
   dim,
   onDelete,
 }: {
   doc: TimelineDocument;
-  above: boolean;
-  tier: Tier;
   dim: boolean;
   onDelete: (d: TimelineDocument, el: HTMLElement | null) => void;
 }) {
   const cardRef = useRef<HTMLDivElement>(null);
   const accent = getCardAccent(doc);
   const a = getAccentClasses(accent);
-  const hex = DOT_HEX[accent];
-  const sz = tierSizes(tier);
-  const springW = useSpring(sz.w, { stiffness: 380, damping: 32 });
-  const springH = useSpring(sz.h, { stiffness: 380, damping: 32 });
-  const springStem = useSpring(sz.stem, { stiffness: 380, damping: 32 });
 
-  useLayoutEffect(() => {
-    springW.set(sz.w);
-    springH.set(sz.h);
-    springStem.set(sz.stem);
-  }, [sz.w, sz.h, sz.stem, springH, springStem, springW]);
-
-  const origin = above ? "bottom" : "top";
-
-  const cardInner = (
-    <motion.div
+  return (
+    <div
       ref={cardRef}
-      style={{ width: springW, height: springH, transformOrigin: `${origin} center` }}
       className={cn(
-        "overflow-hidden rounded-lg border border-border border-t-0 bg-bg-2",
-        tier === "h" && "bg-bg shadow-md",
+        "rounded-2xl border border-border bg-bg-2 p-3 shadow-sm",
+        "border-l-[4px]",
+        a.border,
         dim && "pointer-events-none opacity-20"
       )}
     >
-      <div
-        className="relative box-border h-full w-full p-0.5"
-        style={{ borderTop: `${sz.topBorder}px solid ${hex}`, borderTopLeftRadius: 8, borderTopRightRadius: 8 }}
-      >
+      <div className="flex items-start gap-3">
+        <div className={cn("mt-0.5 flex size-9 shrink-0 items-center justify-center rounded-xl text-[13px] font-semibold", a.bg, a.text)}>
+          {typeLetter(doc)}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <p className="truncate text-[14px] font-semibold text-text-1">{doc.label}</p>
+              <p className="mt-0.5 text-[11px] uppercase tracking-wide text-text-3">
+                {typeShort(doc.type)} · {fmtShort(doc.documentDate)}
+              </p>
+            </div>
+            <span className={cn("shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium", a.badge)}>
+              {doc.flagCount === 0 ? "No flags" : `${doc.flagCount} flags`}
+            </span>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-text-3">
+            <span>Received {fmtShort(doc.receivedDate)}</span>
+            <span aria-hidden>·</span>
+            <span>{doc.language}</span>
+            <span aria-hidden>·</span>
+            <span>{doc.confidenceLevel}</span>
+          </div>
+        </div>
         <button
           type="button"
           onClick={(e) => {
@@ -552,92 +554,11 @@ function StackCard({
             onDelete(doc, cardRef.current);
           }}
           onPointerDown={(e) => e.stopPropagation()}
-          className="absolute left-0.5 top-0.5 z-10 flex h-3.5 w-3.5 items-center justify-center rounded"
-          style={{ backgroundColor: "rgba(204, 34, 34, 0.08)" }}
+          className="shrink-0 rounded-lg border border-border bg-bg px-2 py-1 text-[12px] font-medium text-red hover:border-red/30 hover:bg-red-light"
           aria-label="remove from timeline"
         >
-          <span className="text-[8px] leading-none text-red">×</span>
+          Delete
         </button>
-        {doc.flagCount > 0 && (
-          <span className={cn("absolute right-0.5 top-0.5 z-10 text-[8px] font-medium", a.badge)}>
-            {doc.flagCount}⚑
-          </span>
-        )}
-        <div
-          className={cn("mx-auto mt-2.5 flex h-5 w-5 items-center justify-center rounded text-[11px] font-semibold", a.bg, a.text)}
-        >
-          {typeLetter(doc)}
-        </div>
-        <p className={cn("mt-0.5 text-center text-[11px] font-semibold", a.text)}>{doc.label}</p>
-        <p className="text-center text-[9px] text-text-3">{fmtShort(doc.documentDate)}</p>
-        <p className="line-clamp-1 text-center text-[8px] text-text-2">{typeShort(doc.type)}</p>
-        {tier === "h" && (
-          <>
-            <div className="mx-1 my-0.5 border-t border-border" />
-            <p className="text-center text-[9px] font-semibold text-text-1">
-              {doc.flagCount === 0 ? "No flags" : `${doc.flagCount} flags · in portfolio record`}
-            </p>
-            <div className="mt-0.5 flex justify-center gap-2 text-[8px]">
-              <button
-                type="button"
-                className="text-red"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onDelete(doc, cardRef.current);
-                }}
-                onPointerDown={(e) => e.stopPropagation()}
-              >
-                ✕ Del
-              </button>
-              <span className="text-teal">⇄ Mv</span>
-            </div>
-          </>
-        )}
-        <div className="absolute bottom-0.5 left-0 right-0 text-center text-[9px] text-text-3">⋮⋮</div>
-      </div>
-    </motion.div>
-  );
-
-  const stem = (
-    <motion.div
-      className="w-px shrink-0"
-      style={{ height: springStem, backgroundColor: `${hex}80` }}
-    />
-  );
-
-  const dot = <div className="h-3 w-3 shrink-0 rounded-full border-2 border-white" style={{ background: hex }} />;
-
-  const tooltip =
-    tier === "h" ? (
-      <div className="mb-1 whitespace-nowrap rounded-md bg-text-1 px-1.5 py-0.5 text-[9px] text-bg">
-        {fmtTipMonthYear(doc.documentDate)} · {doc.flagCount} flags · {doc.confidenceLevel}
-      </div>
-    ) : null;
-
-  if (above) {
-    return (
-      <div className="pointer-events-auto relative h-[300px] w-full">
-        <div className="absolute left-1/2 h-[150px] w-44 -translate-x-1/2">
-          <div className="flex h-full flex-col items-center justify-end pb-0">
-            {tooltip}
-            {cardInner}
-            {stem}
-            <div className="-mb-[5px]">{dot}</div>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="pointer-events-auto relative h-[300px] w-full">
-      <div className="absolute left-1/2 top-[150px] h-[150px] w-44 -translate-x-1/2">
-        <div className="flex h-full flex-col items-center">
-          <div className="-mt-[5px]">{dot}</div>
-          {stem}
-          {tooltip}
-          {cardInner}
-        </div>
       </div>
     </div>
   );

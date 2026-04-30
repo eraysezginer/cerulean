@@ -49,6 +49,10 @@ function ingestErrorMessage(e: unknown): string {
   return m;
 }
 
+function isYyyyMmDd(v: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(v.trim());
+}
+
 export async function POST(
   request: Request,
   { params }: { params: { id: string } }
@@ -76,6 +80,12 @@ export async function POST(
     const updateLabel = String(form.get("updateLabel") ?? "");
     const documentDate = String(form.get("documentDate") ?? "");
     const receivedDate = String(form.get("receivedDate") ?? "");
+    if (!isYyyyMmDd(documentDate) || !isYyyyMmDd(receivedDate)) {
+      return NextResponse.json(
+        { error: "Document date and received date are required." },
+        { status: 400 }
+      );
+    }
     const language = String(form.get("language") ?? "");
     const originalSender = String(form.get("originalSender") ?? "");
     const howReceived = String(form.get("howReceived") ?? "");

@@ -182,6 +182,10 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
   const [updateLabel, setUpdateLabel] = useState("");
   const [documentDate, setDocumentDate] = useState("");
   const [receivedDate, setReceivedDate] = useState("");
+  const [dateErrors, setDateErrors] = useState<{
+    documentDate?: string;
+    receivedDate?: string;
+  }>({});
   const [language, setLanguage] = useState("English");
   const [sender, setSender] = useState(getFounderEmailsForCompany(company.id)[0] ?? "");
   const [howReceived, setHowReceived] = useState("Email attachment");
@@ -261,6 +265,18 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
     setSubmitError(null);
     if (files.length === 0) {
       setSubmitError("Add at least one file in a supported format.");
+      return;
+    }
+    const nextDateErrors: typeof dateErrors = {};
+    if (!documentDate) {
+      nextDateErrors.documentDate = "Document date is required.";
+    }
+    if (!receivedDate) {
+      nextDateErrors.receivedDate = "Received date is required.";
+    }
+    setDateErrors(nextDateErrors);
+    if (Object.keys(nextDateErrors).length > 0) {
+      setSubmitError("Select both document date and received date before uploading.");
       return;
     }
     const totalSize = files.reduce((a, f) => a + f.size, 0);
@@ -665,21 +681,29 @@ export function UploadFileClient({ company }: { company: CompanyRow }) {
             />
             <DatePickerField
               size="lg"
-              label="Document date"
-              hint="— date the file was created or sent"
+              label="Document date *"
+              hint="— required; used on the timeline"
               value={documentDate}
-              onChange={setDocumentDate}
+              onChange={(v) => {
+                setDocumentDate(v);
+                setDateErrors((prev) => ({ ...prev, documentDate: undefined }));
+              }}
               placeholder="Pick document date"
+              error={dateErrors.documentDate}
             />
           </TwoColumnRow>
           <TwoColumnRow>
             <DatePickerField
               size="lg"
-              label="Received date"
-              hint="— when you received it in your system"
+              label="Received date *"
+              hint="— required; when you received it"
               value={receivedDate}
-              onChange={setReceivedDate}
+              onChange={(v) => {
+                setReceivedDate(v);
+                setDateErrors((prev) => ({ ...prev, receivedDate: undefined }));
+              }}
               placeholder="Pick received date"
+              error={dateErrors.receivedDate}
             />
             <SelectDropdown
               size="lg"
