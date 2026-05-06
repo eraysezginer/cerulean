@@ -40,11 +40,46 @@ function buildMatchPlan(anchor: string): { phrases: string[]; tokens: string[] }
 
   const tokenSet = new Set(
     words
-      .filter((w) => w.length >= 4)
-      .slice(0, 20)
+      .filter((w) => w.length >= 3)
+      .slice(0, 24)
   );
+  for (const w of words) {
+    if (w.length >= 5) tokenSet.add(w.slice(0, 4));
+    if (tokenSet.size >= 32) break;
+  }
 
   return { phrases: Array.from(phraseSet), tokens: Array.from(tokenSet) };
+}
+
+function mergeRanges(ranges: Array<{ start: number; end: number }>): Array<{ start: number; end: number }> {
+  if (ranges.length === 0) return [];
+  const sorted = [...ranges].sort((a, b) => a.start - b.start || a.end - b.end);
+  const out: Array<{ start: number; end: number }> = [sorted[0]!];
+  for (let i = 1; i < sorted.length; i++) {
+    const current = sorted[i]!;
+    const prev = out[out.length - 1]!;
+    if (current.start <= prev.end) {
+      prev.end = Math.max(prev.end, current.end);
+    } else {
+      out.push({ ...current });
+    }
+  }
+  return out;
+}
+
+function collectRanges(haystack: string, needles: string[]): Array<{ start: number; end: number }> {
+  const out: Array<{ start: number; end: number }> = [];
+  for (const needle of needles) {
+    if (!needle) continue;
+    let from = 0;
+    while (from < haystack.length) {
+      const idx = haystack.indexOf(needle, from);
+      if (idx < 0) break;
+      out.push({ start: idx, end: idx + needle.length });
+      from = idx + Math.max(1, needle.length);
+    }
+  }
+  return out;
 }
 
 function highlightTextChunk(
@@ -53,33 +88,26 @@ function highlightTextChunk(
 ): string {
   if (plan.phrases.length === 0 && plan.tokens.length === 0) return escapeHtml(text);
   const normalizedText = normalizeApostrophes(text).toLowerCase();
+  const phraseRanges = collectRanges(normalizedText, plan.phrases);
+  const tokenRanges = collectRanges(normalizedText, plan.tokens);
+  const ranges = mergeRanges([...phraseRanges, ...tokenRanges]);
+  if (ranges.length === 0) return escapeHtml(text);
 
-  let matched = "";
-  let idx = -1;
-  for (const phrase of plan.phrases) {
-    const at = normalizedText.indexOf(phrase);
-    if (at >= 0) {
-      matched = phrase;
-      idx = at;
-      break;
+  let cursor = 0;
+  let html = "";
+  for (const range of ranges) {
+    if (range.start > cursor) {
+      html += escapeHtml(text.slice(cursor, range.start));
     }
+    html += `<mark class="rounded bg-yellow-300 px-0.5 text-black">${escapeHtml(
+      text.slice(range.start, range.end)
+    )}</mark>`;
+    cursor = range.end;
   }
-  if (idx < 0) {
-    for (const token of plan.tokens) {
-      const at = normalizedText.indexOf(token);
-      if (at >= 0) {
-        matched = token;
-        idx = at;
-        break;
-      }
-    }
+  if (cursor < text.length) {
+    html += escapeHtml(text.slice(cursor));
   }
-  if (idx < 0 || !matched) return escapeHtml(text);
-
-  const before = escapeHtml(text.slice(0, idx));
-  const match = escapeHtml(text.slice(idx, idx + matched.length));
-  const after = escapeHtml(text.slice(idx + matched.length));
-  return `${before}<mark class="rounded bg-yellow-200 px-0.5 text-current">${match}</mark>${after}`;
+  return html;
 }
 
 export function PdfHighlightViewer({
