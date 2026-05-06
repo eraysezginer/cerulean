@@ -96,7 +96,7 @@ export default async function DashboardPage({
     searchParams?.sort === "fund"
       ? searchParams.sort
       : "severity";
-  const dir: "asc" | "desc" = searchParams?.dir === "asc" ? "asc" : "desc";
+  const dir: "asc" | "desc" = searchParams?.dir === "desc" ? "desc" : "asc";
   const portfolioFlags = sortDashboardFlags(await getPortfolioFlagsSorted(), sort, dir);
   const highCount = portfolioFlags.filter((f) => f.confidence === "High").length;
   const positiveCount = portfolioFlags.filter((f) => f.polarity === "positive").length;

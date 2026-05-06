@@ -71,7 +71,7 @@ export default async function ActiveFlagsPage({
     searchParams?.sort === "fund"
       ? searchParams.sort
       : "severity";
-  const dir: "asc" | "desc" = searchParams?.dir === "asc" ? "asc" : "desc";
+  const dir: "asc" | "desc" = searchParams?.dir === "desc" ? "desc" : "asc";
   const rows = sortPortfolioFlags(await getPortfolioFlagsSorted(), sort, dir);
   const high = rows.filter((r) => r.confidence === "High").length;
   const negativeRows = rows.filter((r) => r.polarity === "negative");

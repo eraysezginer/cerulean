@@ -60,7 +60,7 @@ export default async function CompanyFlagsPage({
     searchParams?.sort === "signal"
       ? searchParams.sort
       : "severity";
-  const dir: "asc" | "desc" = searchParams?.dir === "asc" ? "asc" : "desc";
+  const dir: "asc" | "desc" = searchParams?.dir === "desc" ? "desc" : "asc";
   const negativeCount = flags.filter((f) => flagPolarity(f) === "negative").length;
   const positiveCount = flags.filter((f) => flagPolarity(f) === "positive").length;
   const health = computeHealthScoreV1FromFlags(flags);
