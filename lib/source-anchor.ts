@@ -3,9 +3,8 @@ function normalizeWhitespace(input: string): string {
 }
 
 function normalizeForPdfSearch(input: string): string {
-  // PDF text layers often split punctuation/spacing unpredictably.
-  // A simple alnum-only query is more resilient than full sentence matching.
-  return normalizeWhitespace(input.replace(/[^a-zA-Z0-9\s]/g, " "));
+  // Keep apostrophes so contractions like "I'm" stay searchable.
+  return normalizeWhitespace(input.replace(/[^a-zA-Z0-9\s'’]/g, " "));
 }
 
 export function sourceAnchorSearchTerm(sourceAnchor: string): string | null {

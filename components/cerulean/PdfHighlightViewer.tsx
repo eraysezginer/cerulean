@@ -16,14 +16,19 @@ function escapeHtml(input: string): string {
     .replaceAll("'", "&#039;");
 }
 
+function normalizeApostrophes(input: string): string {
+  return input.replace(/[’]/g, "'");
+}
+
 function highlightTextChunk(text: string, needle: string): string {
   if (!needle) return escapeHtml(text);
-  const lower = text.toLowerCase();
-  const idx = lower.indexOf(needle);
+  const normalizedText = normalizeApostrophes(text).toLowerCase();
+  const normalizedNeedle = normalizeApostrophes(needle).toLowerCase();
+  const idx = normalizedText.indexOf(normalizedNeedle);
   if (idx < 0) return escapeHtml(text);
   const before = escapeHtml(text.slice(0, idx));
-  const match = escapeHtml(text.slice(idx, idx + needle.length));
-  const after = escapeHtml(text.slice(idx + needle.length));
+  const match = escapeHtml(text.slice(idx, idx + normalizedNeedle.length));
+  const after = escapeHtml(text.slice(idx + normalizedNeedle.length));
   return `${before}<mark class="rounded bg-yellow-200 px-0.5 text-current">${match}</mark>${after}`;
 }
 
