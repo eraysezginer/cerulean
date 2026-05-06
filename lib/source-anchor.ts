@@ -17,9 +17,8 @@ export function sourceAnchorSearchTerm(sourceAnchor: string): string | null {
 
   const words = raw.split(" ").filter(Boolean);
   if (words.length === 0) return null;
-  // Use a compact keyphrase. Exact long phrases frequently fail on PDF engines.
-  const keyphrase = words.slice(0, Math.min(words.length, 9)).join(" ");
-  return keyphrase.slice(0, 120);
+  // Keep the full anchor text for matching; line-wrap handling is done in viewer logic.
+  return words.join(" ").slice(0, 600);
 }
 
 export function withSourceAnchorSearch(url: string, sourceAnchor: string): string {

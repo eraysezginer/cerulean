@@ -20,15 +20,65 @@ function normalizeApostrophes(input: string): string {
   return input.replace(/[’]/g, "'");
 }
 
-function highlightTextChunk(text: string, needle: string): string {
-  if (!needle) return escapeHtml(text);
+function buildMatchPlan(anchor: string): { phrases: string[]; tokens: string[] } {
+  const normalized = normalizeApostrophes(anchor).toLowerCase().trim();
+  if (!normalized) return { phrases: [], tokens: [] };
+  const words = normalized.split(/\s+/).filter(Boolean);
+  if (words.length === 0) return { phrases: [], tokens: [] };
+
+  const phraseSet = new Set<string>();
+  const maxWindow = Math.min(8, words.length);
+  const minWindow = Math.min(3, maxWindow);
+  for (let size = maxWindow; size >= minWindow; size--) {
+    for (let i = 0; i + size <= words.length; i++) {
+      phraseSet.add(words.slice(i, i + size).join(" "));
+      if (phraseSet.size >= 24) break;
+    }
+    if (phraseSet.size >= 24) break;
+  }
+  if (phraseSet.size === 0) phraseSet.add(words.join(" "));
+
+  const tokenSet = new Set(
+    words
+      .filter((w) => w.length >= 4)
+      .slice(0, 20)
+  );
+
+  return { phrases: Array.from(phraseSet), tokens: Array.from(tokenSet) };
+}
+
+function highlightTextChunk(
+  text: string,
+  plan: { phrases: string[]; tokens: string[] }
+): string {
+  if (plan.phrases.length === 0 && plan.tokens.length === 0) return escapeHtml(text);
   const normalizedText = normalizeApostrophes(text).toLowerCase();
-  const normalizedNeedle = normalizeApostrophes(needle).toLowerCase();
-  const idx = normalizedText.indexOf(normalizedNeedle);
-  if (idx < 0) return escapeHtml(text);
+
+  let matched = "";
+  let idx = -1;
+  for (const phrase of plan.phrases) {
+    const at = normalizedText.indexOf(phrase);
+    if (at >= 0) {
+      matched = phrase;
+      idx = at;
+      break;
+    }
+  }
+  if (idx < 0) {
+    for (const token of plan.tokens) {
+      const at = normalizedText.indexOf(token);
+      if (at >= 0) {
+        matched = token;
+        idx = at;
+        break;
+      }
+    }
+  }
+  if (idx < 0 || !matched) return escapeHtml(text);
+
   const before = escapeHtml(text.slice(0, idx));
-  const match = escapeHtml(text.slice(idx, idx + normalizedNeedle.length));
-  const after = escapeHtml(text.slice(idx + normalizedNeedle.length));
+  const match = escapeHtml(text.slice(idx, idx + matched.length));
+  const after = escapeHtml(text.slice(idx + matched.length));
   return `${before}<mark class="rounded bg-yellow-200 px-0.5 text-current">${match}</mark>${after}`;
 }
 
@@ -46,6 +96,7 @@ export function PdfHighlightViewer({
   const [pageWidth, setPageWidth] = useState<number>(760);
   const [isPdfReady, setIsPdfReady] = useState(false);
   const searchTerm = useMemo(() => sourceAnchorSearchTerm(sourceAnchor ?? "") ?? "", [sourceAnchor]);
+  const matchPlan = useMemo(() => buildMatchPlan(searchTerm), [searchTerm]);
 
   useEffect(() => {
     let cancelled = false;
@@ -108,9 +159,7 @@ export function PdfHighlightViewer({
                   pageNumber={pageNumber}
                   width={pageWidth}
                   renderAnnotationLayer={false}
-                  customTextRenderer={(item: { str: string }) =>
-                    highlightTextChunk(item.str, searchTerm.toLowerCase())
-                  }
+                  customTextRenderer={(item: { str: string }) => highlightTextChunk(item.str, matchPlan)}
                 />
               </div>
             ))}
