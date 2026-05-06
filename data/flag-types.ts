@@ -5,6 +5,7 @@ export type PortfolioFlag = {
   id: string;
   companyId: string;
   companyName: string;
+  fund?: string;
   signalType: string;
   confidence: Confidence;
   polarity: FlagPolarity;

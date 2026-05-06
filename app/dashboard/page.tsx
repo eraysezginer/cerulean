@@ -7,7 +7,9 @@ import {
 } from "lucide-react";
 import { getAllCompaniesList } from "@/data/companies";
 import { getPortfolioFlagsSorted } from "@/data/flags";
-import type { Confidence } from "@/data/flag-types";
+import type { Confidence, PortfolioFlag } from "@/data/flag-types";
+import { SortDirectionSelect } from "@/components/cerulean/SortDirectionSelect";
+import { SortBySelect } from "@/components/cerulean/SortBySelect";
 import { StatCard } from "@/components/cerulean/StatCard";
 import { ViewSourceButton } from "@/components/cerulean/ViewSourceButton";
 import { cn } from "@/lib/utils";
@@ -37,9 +39,65 @@ function confidenceBadge(c: Confidence) {
   );
 }
 
-export default async function DashboardPage() {
+type DashboardFlagSort = "severity" | "company" | "confidence" | "fund";
+
+const confidenceRank = { High: 0, Medium: 1, Low: 2 } as const;
+
+function fundRank(value?: string): number {
+  if (!value) return 99;
+  const m = value.match(/^Fund\s+([1-5])$/i);
+  if (!m) return 98;
+  return Number(m[1]);
+}
+
+function sortDashboardFlags(
+  rows: PortfolioFlag[],
+  sort: DashboardFlagSort,
+  dir: "asc" | "desc"
+): PortfolioFlag[] {
+  const out = [...rows];
+  const mult = dir === "asc" ? 1 : -1;
+  out.sort((a, b) => {
+    if (sort === "company") {
+      const cmp =
+        a.companyName.localeCompare(b.companyName) ||
+        confidenceRank[a.confidence] - confidenceRank[b.confidence];
+      return cmp * mult;
+    }
+    if (sort === "confidence") {
+      const cmp =
+        confidenceRank[a.confidence] - confidenceRank[b.confidence] ||
+        a.companyName.localeCompare(b.companyName);
+      return cmp * mult;
+    }
+    if (sort === "fund") {
+      const cmp =
+        fundRank(a.fund) - fundRank(b.fund) || a.companyName.localeCompare(b.companyName);
+      return cmp * mult;
+    }
+    const cmp =
+      (a.polarity === "negative" ? 0 : 1) - (b.polarity === "negative" ? 0 : 1) ||
+      confidenceRank[a.confidence] - confidenceRank[b.confidence] ||
+      a.companyName.localeCompare(b.companyName);
+    return cmp * mult;
+  });
+  return out;
+}
+
+export default async function DashboardPage({
+  searchParams,
+}: {
+  searchParams?: { sort?: string; dir?: string };
+}) {
   const companies = await getAllCompaniesList();
-  const portfolioFlags = await getPortfolioFlagsSorted();
+  const sort: DashboardFlagSort =
+    searchParams?.sort === "company" ||
+    searchParams?.sort === "confidence" ||
+    searchParams?.sort === "fund"
+      ? searchParams.sort
+      : "severity";
+  const dir: "asc" | "desc" = searchParams?.dir === "asc" ? "asc" : "desc";
+  const portfolioFlags = sortDashboardFlags(await getPortfolioFlagsSorted(), sort, dir);
   const highCount = portfolioFlags.filter((f) => f.confidence === "High").length;
   const positiveCount = portfolioFlags.filter((f) => f.polarity === "positive").length;
   const now = new Date();
@@ -108,12 +166,24 @@ export default async function DashboardPage() {
                 grouped as negative or positive
               </p>
             </div>
-            <Link
-              href="/flags/active"
-              className="text-[13px] font-medium text-teal underline-offset-2 hover:underline"
-            >
-              View all →
-            </Link>
+            <div className="flex items-center gap-3">
+              <SortBySelect
+                value={sort}
+                options={[
+                  { value: "severity", label: "Severity (default)" },
+                  { value: "company", label: "Company" },
+                  { value: "confidence", label: "Confidence" },
+                  { value: "fund", label: "Fund" },
+                ]}
+              />
+              <SortDirectionSelect value={dir} />
+              <Link
+                href="/flags/active"
+                className="text-[13px] font-medium text-teal underline-offset-2 hover:underline"
+              >
+                View all →
+              </Link>
+            </div>
           </div>
 
           {portfolioFlags.length === 0 ? (

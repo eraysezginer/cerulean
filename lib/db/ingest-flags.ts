@@ -16,6 +16,7 @@ type IngestFlagsRow = RowDataPacket & {
   aiAnalysisModel: string | null;
   flagsJson: string | null;
   legalName: string;
+  formData: string;
 };
 
 function parseFlagsArray(s: string | null): CompanyFlagDetail[] {
@@ -36,6 +37,28 @@ function confidenceToDot(
   if (confidence === "High") return "red";
   if (confidence === "Medium") return "amber";
   return "grey";
+}
+
+function parsePortfolioFund(formData: string): string | undefined {
+  try {
+    const parsed = JSON.parse(formData) as { portfolioFund?: unknown; fundName?: unknown };
+    const raw = String(parsed.portfolioFund ?? parsed.fundName ?? "").trim();
+    if (!raw) return undefined;
+    const numeric = raw.match(/^fund\s*([1-5])$/i);
+    if (numeric) return `Fund ${numeric[1]}`;
+    const roman = raw.match(/^fund\s*(i|ii|iii|iv|v)$/i);
+    if (!roman) return undefined;
+    const map: Record<string, string> = {
+      i: "Fund 1",
+      ii: "Fund 2",
+      iii: "Fund 3",
+      iv: "Fund 4",
+      v: "Fund 5",
+    };
+    return map[roman[1]!.toLowerCase()];
+  } catch {
+    return undefined;
+  }
 }
 
 /**
@@ -101,7 +124,7 @@ export async function getIngestFlagsForCompany(companyId: string): Promise<Compa
 export async function getIngestFlagsForPortfolio(): Promise<PortfolioFlag[]> {
   const pool = getPool();
   const [rows] = await pool.execute<IngestFlagsRow[]>(
-    `SELECT d.\`jobId\`, d.\`companyId\`, d.\`fileDisplayName\`, d.\`updateLabel\`, d.\`flagsJson\`, c.\`legalName\`
+    `SELECT d.\`jobId\`, d.\`companyId\`, d.\`fileDisplayName\`, d.\`updateLabel\`, d.\`flagsJson\`, c.\`legalName\`, c.\`formData\`
      FROM \`DocumentIngest\` d
      INNER JOIN \`Company\` c ON c.\`id\` = d.\`companyId\`
      WHERE d.\`status\` = 'complete'
@@ -119,6 +142,7 @@ export async function getIngestFlagsForPortfolio(): Promise<PortfolioFlag[]> {
         id: `${r.jobId}__${f.id}__${i++}`,
         companyId: r.companyId,
         companyName: r.legalName,
+        fund: parsePortfolioFund(r.formData),
         signalType: f.signalType,
         confidence: f.confidence,
         polarity: flagPolarity(f),

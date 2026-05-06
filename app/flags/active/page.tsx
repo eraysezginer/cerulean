@@ -1,4 +1,7 @@
 import { getPortfolioFlagsSorted } from "@/data/flags";
+import type { PortfolioFlag } from "@/data/flag-types";
+import { SortDirectionSelect } from "@/components/cerulean/SortDirectionSelect";
+import { SortBySelect } from "@/components/cerulean/SortBySelect";
 import { Button } from "@/components/ui/button";
 import { ConfidenceBadge } from "@/components/cerulean/ConfidenceBadge";
 import { cn } from "@/lib/utils";
@@ -10,8 +13,66 @@ const dot: Record<string, string> = {
   positive: "bg-green",
 };
 
-export default async function ActiveFlagsPage() {
-  const rows = await getPortfolioFlagsSorted();
+type ActiveFlagSort = "severity" | "company" | "confidence" | "fund";
+
+const confidenceRank = { High: 0, Medium: 1, Low: 2 } as const;
+
+function fundRank(value?: string): number {
+  if (!value) return 99;
+  const m = value.match(/^Fund\s+([1-5])$/i);
+  if (!m) return 98;
+  return Number(m[1]);
+}
+
+function sortPortfolioFlags(
+  rows: PortfolioFlag[],
+  sort: ActiveFlagSort,
+  dir: "asc" | "desc"
+): PortfolioFlag[] {
+  const out = [...rows];
+  const mult = dir === "asc" ? 1 : -1;
+  out.sort((a, b) => {
+    if (sort === "company") {
+      const cmp =
+        a.companyName.localeCompare(b.companyName) ||
+        confidenceRank[a.confidence] - confidenceRank[b.confidence];
+      return cmp * mult;
+    }
+    if (sort === "confidence") {
+      const cmp =
+        confidenceRank[a.confidence] - confidenceRank[b.confidence] ||
+        a.companyName.localeCompare(b.companyName);
+      return cmp * mult;
+    }
+    if (sort === "fund") {
+      const cmp =
+        fundRank(a.fund) - fundRank(b.fund) ||
+        a.companyName.localeCompare(b.companyName) ||
+        confidenceRank[a.confidence] - confidenceRank[b.confidence];
+      return cmp * mult;
+    }
+    const cmp =
+      (a.polarity === "negative" ? 0 : 1) - (b.polarity === "negative" ? 0 : 1) ||
+      confidenceRank[a.confidence] - confidenceRank[b.confidence] ||
+      a.companyName.localeCompare(b.companyName);
+    return cmp * mult;
+  });
+  return out;
+}
+
+export default async function ActiveFlagsPage({
+  searchParams,
+}: {
+  searchParams?: { sort?: string; dir?: string };
+}) {
+  const sort: ActiveFlagSort =
+    searchParams?.sort === "company" ||
+    searchParams?.sort === "confidence" ||
+    searchParams?.sort === "fund"
+      ? searchParams.sort
+      : "severity";
+  const dir: "asc" | "desc" = searchParams?.dir === "asc" ? "asc" : "desc";
+  const rows = sortPortfolioFlags(await getPortfolioFlagsSorted(), sort, dir);
   const high = rows.filter((r) => r.confidence === "High").length;
   const negativeRows = rows.filter((r) => r.polarity === "negative");
   const positiveRows = rows.filter((r) => r.polarity === "positive");
@@ -23,12 +84,27 @@ export default async function ActiveFlagsPage() {
           <h1 className="text-page-title text-text-1">Active flags</h1>
           <p className="text-body text-text-2">
             {rows.length} flag{rows.length === 1 ? "" : "s"} from document analysis
-            {rows.length > 0 ? ` · ${negativeRows.length} negative · ${positiveRows.length} positive · ${high} high confidence` : ""} · sorted by severity
+            {rows.length > 0
+              ? ` · ${negativeRows.length} negative · ${positiveRows.length} positive · ${high} high confidence`
+              : ""}{" "}
+            · sorted by {sort} ({dir === "desc" ? "descending" : "ascending"})
           </p>
         </div>
-        <Button type="button" variant="outline" size="sm">
-          Export all
-        </Button>
+        <div className="flex items-center gap-2">
+          <SortBySelect
+            value={sort}
+            options={[
+              { value: "severity", label: "Severity (default)" },
+              { value: "company", label: "Company" },
+              { value: "confidence", label: "Confidence" },
+              { value: "fund", label: "Fund" },
+            ]}
+          />
+          <SortDirectionSelect value={dir} />
+          <Button type="button" variant="outline" size="sm">
+            Export all
+          </Button>
+        </div>
       </div>
 
       {rows.length === 0 ? (
@@ -67,6 +143,7 @@ function PortfolioFlagTable({
               <tr className="border-b border-border bg-bg-2/70 text-[12px] uppercase tracking-wide text-text-3">
                 <th className="p-2 font-medium"> </th>
                 <th className="p-2 font-medium">Company</th>
+                <th className="p-2 font-medium">Fund</th>
                 <th className="p-2 font-medium">Signal</th>
                 <th className="p-2 font-medium">Confidence</th>
                 <th className="p-2 font-medium">Update</th>
@@ -85,6 +162,7 @@ function PortfolioFlagTable({
                     />
                   </td>
                   <td className="p-2 font-medium text-text-1">{r.companyName}</td>
+                  <td className="p-2 text-text-3">{r.fund ?? "—"}</td>
                   <td className="p-2 text-text-2">{r.signalType}</td>
                   <td className="p-2">
                     <ConfidenceBadge level={r.confidence} />
