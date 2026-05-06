@@ -7,6 +7,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { flagPolarity, type CompanyFlagDetail } from "@/data/flag-types";
+import { withSourceAnchorSearch } from "@/lib/source-anchor";
 import { ConfidenceBadge } from "./ConfidenceBadge";
 
 export function SourceEvidenceModal({
@@ -23,6 +24,13 @@ export function SourceEvidenceModal({
   const hash = source?.primaryHash
     ? `sha256:${source.primaryHash.slice(0, 12)}...`
     : "Not available";
+  const sourceDocumentUrl =
+    source?.companyId && source.documentId
+      ? withSourceAnchorSearch(
+          `/api/companies/${encodeURIComponent(source.companyId)}/documents/${encodeURIComponent(source.documentId)}/file?index=0`,
+          flag.sourceAnchor
+        )
+      : null;
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -65,6 +73,25 @@ export function SourceEvidenceModal({
           <div className="rounded-md border border-teal/30 bg-teal/[0.04] p-3 font-mono text-[12px] leading-snug text-text-2">
             {flag.sourceAnchor || "No source anchor returned by the model."}
           </div>
+          {sourceDocumentUrl ? (
+            <div className="mt-3 space-y-2">
+              <a
+                href={sourceDocumentUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex h-8 items-center rounded-lg bg-teal px-3 text-[12px] font-medium text-primary-foreground"
+              >
+                Open source in PDF →
+              </a>
+              <div className="overflow-hidden rounded-xl border border-border bg-bg">
+                <iframe
+                  title="Source document preview"
+                  src={sourceDocumentUrl}
+                  className="h-[320px] w-full border-0"
+                />
+              </div>
+            </div>
+          ) : null}
 
           <p className="mb-2 mt-6 text-section-label uppercase text-text-3">
             Document metadata

@@ -76,6 +76,7 @@ export async function getIngestFlagsForCompany(companyId: string): Promise<Compa
         ...f,
         id: `${r.jobId}__${f.id}`,
         source: {
+          companyId: r.companyId,
           companyName: r.legalName,
           fileDisplayName: r.fileDisplayName,
           updateLabel: r.updateLabel,

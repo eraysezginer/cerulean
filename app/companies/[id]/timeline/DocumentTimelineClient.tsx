@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/dialog";
 import { flagPolarity } from "@/data/flag-types";
 import type { TimelineDocument, TimelineType } from "@/data/timeline";
+import { withSourceAnchorSearch } from "@/lib/source-anchor";
 import { getAccentClasses, getCardAccent, typeLetter } from "@/lib/timeline-ui";
 import { cn } from "@/lib/utils";
 
@@ -587,16 +588,19 @@ function DocumentPreviewDialog({
 }) {
   const [fileIndex, setFileIndex] = useState(0);
   const [activePanel, setActivePanel] = useState<"file" | "flags">("file");
+  const [anchorSearch, setAnchorSearch] = useState<string>("");
 
   useEffect(() => {
     if (open) {
       setFileIndex(0);
       setActivePanel("file");
+      setAnchorSearch("");
     }
   }, [open, doc?.id]);
 
   const file = doc?.files[fileIndex];
   const previewable = file ? canPreviewFile(file.originalName) : false;
+  const previewUrl = file ? withSourceAnchorSearch(file.viewUrl, anchorSearch) : null;
   const flags = doc?.flags ?? [];
   const negativeFlags = flags.filter((flag) => flagPolarity(flag) === "negative");
   const positiveFlags = flags.filter((flag) => flagPolarity(flag) === "positive");
@@ -635,6 +639,7 @@ function DocumentPreviewDialog({
                     onClick={() => {
                       setFileIndex(i);
                       setActivePanel("file");
+                      setAnchorSearch("");
                     }}
                     className={cn(
                       "w-full rounded-lg border px-2 py-2 text-left transition-colors",
@@ -688,8 +693,22 @@ function DocumentPreviewDialog({
                 </div>
                 {flags.length ? (
                   <div className="space-y-5">
-                    <TimelineFlagList title="Negative Flags" flags={negativeFlags} />
-                    <TimelineFlagList title="Positive Flags" flags={positiveFlags} />
+                    <TimelineFlagList
+                      title="Negative Flags"
+                      flags={negativeFlags}
+                      onShowInPdf={(anchor) => {
+                        setActivePanel("file");
+                        setAnchorSearch(anchor);
+                      }}
+                    />
+                    <TimelineFlagList
+                      title="Positive Flags"
+                      flags={positiveFlags}
+                      onShowInPdf={(anchor) => {
+                        setActivePanel("file");
+                        setAnchorSearch(anchor);
+                      }}
+                    />
                   </div>
                 ) : (
                   <div className="flex h-[calc(100%-4rem)] items-center justify-center">
@@ -704,12 +723,19 @@ function DocumentPreviewDialog({
               </div>
             ) : file ? (
               previewable ? (
-                <iframe
-                  key={file.viewUrl}
-                  src={file.viewUrl}
-                  title={file.originalName}
-                  className="h-full w-full border-0"
-                />
+                <div className="flex h-full min-h-0 flex-col">
+                  {anchorSearch ? (
+                    <div className="border-b border-border bg-teal/[0.04] px-3 py-1.5 text-[11px] text-text-2">
+                      Highlighting source anchor in PDF
+                    </div>
+                  ) : null}
+                  <iframe
+                    key={`${file.viewUrl}::${anchorSearch}`}
+                    src={previewUrl ?? file.viewUrl}
+                    title={file.originalName}
+                    className="h-full w-full border-0"
+                  />
+                </div>
               ) : (
                 <div className="flex h-full items-center justify-center p-8">
                   <div className="max-w-md rounded-2xl border border-border bg-bg-2 p-5 text-center">
@@ -743,9 +769,11 @@ function DocumentPreviewDialog({
 function TimelineFlagList({
   title,
   flags,
+  onShowInPdf,
 }: {
   title: string;
   flags: TimelineDocument["flags"];
+  onShowInPdf?: (sourceAnchor: string) => void;
 }) {
   return (
     <section>
@@ -774,9 +802,20 @@ function TimelineFlagList({
                 </div>
                 <p className="text-[13px] font-semibold text-text-1">{flag.description}</p>
                 {flag.sourceAnchor ? (
-                  <p className="mt-2 rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-3">
-                    Source: {flag.sourceAnchor}
-                  </p>
+                  <div className="mt-2 space-y-2">
+                    <p className="rounded-lg border border-border bg-bg px-2 py-1.5 text-[11px] text-text-3">
+                      Source: {flag.sourceAnchor}
+                    </p>
+                    {onShowInPdf ? (
+                      <button
+                        type="button"
+                        onClick={() => onShowInPdf(flag.sourceAnchor)}
+                        className="inline-flex h-7 items-center rounded-md bg-teal-light px-2.5 text-[11px] font-medium text-teal hover:bg-teal/10"
+                      >
+                        Show on PDF
+                      </button>
+                    ) : null}
+                  </div>
                 ) : null}
               </div>
             );

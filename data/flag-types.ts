@@ -23,6 +23,7 @@ export type CompanyFlagDetail = {
   sourceAnchor: string;
   informedByNote?: boolean;
   source?: {
+    companyId?: string;
     companyName?: string;
     fileDisplayName: string;
     updateLabel: string;
