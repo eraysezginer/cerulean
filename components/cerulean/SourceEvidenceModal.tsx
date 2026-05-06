@@ -7,8 +7,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { flagPolarity, type CompanyFlagDetail } from "@/data/flag-types";
-import { withSourceAnchorSearch } from "@/lib/source-anchor";
 import { ConfidenceBadge } from "./ConfidenceBadge";
+import { PdfHighlightViewer } from "./PdfHighlightViewer";
 
 export function SourceEvidenceModal({
   open,
@@ -26,10 +26,7 @@ export function SourceEvidenceModal({
     : "Not available";
   const sourceDocumentUrl =
     source?.companyId && source.documentId
-      ? withSourceAnchorSearch(
-          `/api/companies/${encodeURIComponent(source.companyId)}/documents/${encodeURIComponent(source.documentId)}/file?index=0`,
-          flag.sourceAnchor
-        )
+      ? `/api/companies/${encodeURIComponent(source.companyId)}/documents/${encodeURIComponent(source.documentId)}/file?index=0`
       : null;
 
   return (
@@ -81,13 +78,13 @@ export function SourceEvidenceModal({
                 rel="noreferrer"
                 className="inline-flex h-8 items-center rounded-lg bg-teal px-3 text-[12px] font-medium text-primary-foreground"
               >
-                Open source in PDF →
+                Open source file →
               </a>
               <div className="overflow-hidden rounded-xl border border-border bg-bg">
-                <iframe
-                  title="Source document preview"
-                  src={sourceDocumentUrl}
-                  className="h-[320px] w-full border-0"
+                <PdfHighlightViewer
+                  fileUrl={sourceDocumentUrl}
+                  sourceAnchor={flag.sourceAnchor}
+                  className="h-[360px] overflow-auto bg-bg-2 p-2"
                 />
               </div>
             </div>

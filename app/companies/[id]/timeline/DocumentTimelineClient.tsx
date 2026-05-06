@@ -21,9 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { PdfHighlightViewer } from "@/components/cerulean/PdfHighlightViewer";
 import { flagPolarity } from "@/data/flag-types";
 import type { TimelineDocument, TimelineType } from "@/data/timeline";
-import { withSourceAnchorSearch } from "@/lib/source-anchor";
 import { getAccentClasses, getCardAccent, typeLetter } from "@/lib/timeline-ui";
 import { cn } from "@/lib/utils";
 
@@ -64,6 +64,10 @@ function formatBytes(n: number): string {
 function canPreviewFile(name: string): boolean {
   const ext = name.toLowerCase().split(".").pop();
   return ext === "pdf" || ext === "txt" || ext === "eml";
+}
+
+function isPdfFile(name: string): boolean {
+  return name.toLowerCase().endsWith(".pdf");
 }
 
 function parseDocTime(d: string): number | null {
@@ -600,7 +604,7 @@ function DocumentPreviewDialog({
 
   const file = doc?.files[fileIndex];
   const previewable = file ? canPreviewFile(file.originalName) : false;
-  const previewUrl = file ? withSourceAnchorSearch(file.viewUrl, anchorSearch) : null;
+  const isPdf = file ? isPdfFile(file.originalName) : false;
   const flags = doc?.flags ?? [];
   const negativeFlags = flags.filter((flag) => flagPolarity(flag) === "negative");
   const positiveFlags = flags.filter((flag) => flagPolarity(flag) === "positive");
@@ -722,20 +726,26 @@ function DocumentPreviewDialog({
                 )}
               </div>
             ) : file ? (
-              previewable ? (
+              isPdf ? (
                 <div className="flex h-full min-h-0 flex-col">
                   {anchorSearch ? (
                     <div className="border-b border-border bg-teal/[0.04] px-3 py-1.5 text-[11px] text-text-2">
                       Highlighting source anchor in PDF
                     </div>
                   ) : null}
-                  <iframe
-                    key={`${file.viewUrl}::${anchorSearch}`}
-                    src={previewUrl ?? file.viewUrl}
-                    title={file.originalName}
-                    className="h-full w-full border-0"
+                  <PdfHighlightViewer
+                    fileUrl={file.viewUrl}
+                    sourceAnchor={anchorSearch}
+                    className="h-full overflow-auto bg-bg-2 p-3"
                   />
                 </div>
+              ) : previewable ? (
+                <iframe
+                  key={file.viewUrl}
+                  src={file.viewUrl}
+                  title={file.originalName}
+                  className="h-full w-full border-0"
+                />
               ) : (
                 <div className="flex h-full items-center justify-center p-8">
                   <div className="max-w-md rounded-2xl border border-border bg-bg-2 p-5 text-center">
