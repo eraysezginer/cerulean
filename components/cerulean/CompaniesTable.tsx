@@ -14,10 +14,11 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
 
   return (
     <div className="overflow-x-auto rounded-lg border border-border">
-      <table className="w-full min-w-[940px] text-left text-body">
+      <table className="w-full min-w-[980px] text-left text-body">
         <thead>
           <tr className="border-b border-border bg-bg-2 text-[12px] uppercase tracking-wide text-text-3">
             <th className="p-3 font-medium">Company</th>
+            <th className="p-3 font-medium">Fund</th>
             <th className="p-3 font-medium">Default</th>
             <th className="p-3 font-medium">Health</th>
             <th className="p-3 font-medium">Flags</th>
@@ -38,6 +39,11 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
                 >
                   {c.name}
                 </Link>
+              </td>
+              <td className="p-3">
+                <span className="inline-flex rounded-full bg-teal-light px-2 py-0.5 text-[11px] font-medium text-teal">
+                  {c.fund ?? "Unassigned"}
+                </span>
               </td>
               <td className="p-3">
                 <button

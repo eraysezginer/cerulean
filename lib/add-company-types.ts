@@ -1,4 +1,5 @@
 import type { Cadence } from "@/data/company-types";
+import type { PortfolioFund } from "@/data/company-types";
 
 export type AddCompanyForm = {
   legalName: string;
@@ -16,6 +17,7 @@ export type AddCompanyForm = {
 
   fundId: string;
   fundName: string;
+  portfolioFund: PortfolioFund | "";
   vehicleType: string;
   vintageYear: string;
   isNewFund: boolean;
@@ -76,6 +78,7 @@ export const initialAddCompanyForm: AddCompanyForm = {
 
   fundId: "",
   fundName: "",
+  portfolioFund: "",
   vehicleType: "LP Fund",
   vintageYear: "",
   isNewFund: false,

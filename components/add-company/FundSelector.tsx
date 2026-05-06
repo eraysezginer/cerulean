@@ -16,6 +16,7 @@ const VEHICLES = [
   "Syndicate",
   "Other",
 ];
+const PORTFOLIO_FUNDS = ["Fund 1", "Fund 2", "Fund 3", "Fund 4", "Fund 5"] as const;
 
 export function FundSelector() {
   const { form, setForm, setField, stepErrors } = useAddCompany();
@@ -92,7 +93,7 @@ export function FundSelector() {
       ) : null}
 
       {!showCreateInline && (
-        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[3fr_1fr_1fr]">
+        <div className="mt-3 grid grid-cols-1 gap-3 lg:grid-cols-[3fr_1fr_1fr_1fr]">
           <div>
             <label className="text-[13px] font-medium text-text-1">Fund</label>
             {isCustomFund ? (
@@ -161,6 +162,16 @@ export function FundSelector() {
               <p className="mt-0.5 text-[13px] text-red">{stepErrors.fundId}</p>
             ) : null}
           </div>
+          <SelectDropdown
+            label="Portfolio fund"
+            options={PORTFOLIO_FUNDS.map((f) => ({ value: f, label: f }))}
+            value={form.portfolioFund}
+            onChange={(v) => setField("portfolioFund", v as (typeof PORTFOLIO_FUNDS)[number])}
+            placeholder="Select"
+          />
+          {stepErrors.portfolioFund ? (
+            <p className="-mt-1 text-[13px] text-red">{stepErrors.portfolioFund}</p>
+          ) : null}
           <SelectDropdown
             label="Vehicle type"
             options={VEHICLES.map((v) => ({ value: v, label: v }))}

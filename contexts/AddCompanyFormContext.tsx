@@ -74,6 +74,9 @@ export function AddCompanyFormProvider({ children }: { children: ReactNode }) {
         }
       }
       if (step === 2) {
+        if (!form.portfolioFund) {
+          err.portfolioFund = "Select Fund 1-5.";
+        }
         if (!form.fundId) {
           err.fundId = "Select a fund or create one.";
         } else if (form.fundId === "__new__") {

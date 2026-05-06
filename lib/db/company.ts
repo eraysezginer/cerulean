@@ -1,7 +1,7 @@
 import { rm } from "node:fs/promises";
 import path from "node:path";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
-import type { Cadence, CompanyRow } from "@/data/company-types";
+import type { Cadence, CompanyRow, PortfolioFund } from "@/data/company-types";
 import { computeHealthScoreV1FromCounts } from "@/lib/health-score-v1";
 import getPool from "./pool";
 
@@ -24,6 +24,32 @@ export type CompanyDbRow = RowDataPacket & {
   formData: string;
 };
 
+function normalizePortfolioFund(raw: unknown): PortfolioFund | undefined {
+  const s = String(raw ?? "").trim();
+  if (!s) return undefined;
+  const m = s.match(/^fund\s*([1-5])$/i);
+  if (m) return `Fund ${m[1]}` as PortfolioFund;
+  const roman = s.match(/^fund\s*(i|ii|iii|iv|v)$/i);
+  if (!roman) return undefined;
+  const map: Record<string, PortfolioFund> = {
+    i: "Fund 1",
+    ii: "Fund 2",
+    iii: "Fund 3",
+    iv: "Fund 4",
+    v: "Fund 5",
+  };
+  return map[roman[1]!.toLowerCase()];
+}
+
+function portfolioFundFromFormData(formData: string): PortfolioFund | undefined {
+  try {
+    const parsed = JSON.parse(formData) as { portfolioFund?: unknown; fundName?: unknown };
+    return normalizePortfolioFund(parsed.portfolioFund) ?? normalizePortfolioFund(parsed.fundName);
+  } catch {
+    return undefined;
+  }
+}
+
 export function mapCompanyRowToDomain(c: CompanyDbRow): CompanyRow {
   const hasBreakdown =
     c.negativeHigh != null ||
@@ -36,6 +62,7 @@ export function mapCompanyRowToDomain(c: CompanyDbRow): CompanyRow {
   return {
     id: c.id,
     name: c.legalName,
+    fund: portfolioFundFromFormData(c.formData),
     health: hasBreakdown
       ? computeHealthScoreV1FromCounts({
           negativeHigh: Number(c.negativeHigh ?? 0),
