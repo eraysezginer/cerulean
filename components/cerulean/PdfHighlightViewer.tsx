@@ -1,7 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { sourceAnchorSearchTerm } from "@/lib/source-anchor";
 
 const PdfDocument = dynamic(() => import("react-pdf").then((m) => m.Document), { ssr: false });
@@ -20,94 +20,75 @@ function normalizeApostrophes(input: string): string {
   return input.replace(/[’]/g, "'");
 }
 
-function buildMatchPlan(anchor: string): { phrases: string[]; tokens: string[] } {
-  const normalized = normalizeApostrophes(anchor).toLowerCase().trim();
-  if (!normalized) return { phrases: [], tokens: [] };
-  const words = normalized.split(/\s+/).filter(Boolean);
-  if (words.length === 0) return { phrases: [], tokens: [] };
-
-  const phraseSet = new Set<string>();
-  const maxWindow = Math.min(8, words.length);
-  const minWindow = Math.min(3, maxWindow);
-  for (let size = maxWindow; size >= minWindow; size--) {
-    for (let i = 0; i + size <= words.length; i++) {
-      phraseSet.add(words.slice(i, i + size).join(" "));
-      if (phraseSet.size >= 24) break;
-    }
-    if (phraseSet.size >= 24) break;
-  }
-  if (phraseSet.size === 0) phraseSet.add(words.join(" "));
-
-  const tokenSet = new Set(
-    words
-      .filter((w) => w.length >= 3)
-      .slice(0, 24)
-  );
-  for (const w of words) {
-    if (w.length >= 5) tokenSet.add(w.slice(0, 4));
-    if (tokenSet.size >= 32) break;
-  }
-
-  return { phrases: Array.from(phraseSet), tokens: Array.from(tokenSet) };
+function normalizeForWordMatch(input: string): string {
+  return normalizeApostrophes(input)
+    .toLowerCase()
+    .replace(/[^a-z0-9\s']/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-function mergeRanges(ranges: Array<{ start: number; end: number }>): Array<{ start: number; end: number }> {
-  if (ranges.length === 0) return [];
-  const sorted = [...ranges].sort((a, b) => a.start - b.start || a.end - b.end);
-  const out: Array<{ start: number; end: number }> = [sorted[0]!];
-  for (let i = 1; i < sorted.length; i++) {
-    const current = sorted[i]!;
-    const prev = out[out.length - 1]!;
-    if (current.start <= prev.end) {
-      prev.end = Math.max(prev.end, current.end);
-    } else {
-      out.push({ ...current });
-    }
-  }
-  return out;
+function wordsFrom(input: string): string[] {
+  const n = normalizeForWordMatch(input);
+  return n ? n.split(" ").filter(Boolean) : [];
 }
 
-function collectRanges(haystack: string, needles: string[]): Array<{ start: number; end: number }> {
-  const out: Array<{ start: number; end: number }> = [];
-  for (const needle of needles) {
-    if (!needle) continue;
-    let from = 0;
-    while (from < haystack.length) {
-      const idx = haystack.indexOf(needle, from);
-      if (idx < 0) break;
-      out.push({ start: idx, end: idx + needle.length });
-      from = idx + Math.max(1, needle.length);
+function extractItems(payload: unknown): unknown[] {
+  if (typeof payload !== "object" || payload === null) return [];
+  const maybe = payload as { items?: unknown };
+  return Array.isArray(maybe.items) ? maybe.items : [];
+}
+
+function extractItemText(item: unknown): string {
+  if (typeof item !== "object" || item === null) return "";
+  const maybe = item as { str?: unknown };
+  return typeof maybe.str === "string" ? maybe.str : "";
+}
+
+function extractItemIndex(item: unknown): number {
+  if (typeof item !== "object" || item === null) return -1;
+  const maybe = item as { itemIndex?: unknown };
+  return typeof maybe.itemIndex === "number" ? maybe.itemIndex : -1;
+}
+
+function findMatchingItemIndexes(
+  itemStrings: string[],
+  anchorWords: string[]
+): Set<number> {
+  if (anchorWords.length === 0 || itemStrings.length === 0) return new Set<number>();
+  const flattened: Array<{ word: string; itemIndex: number }> = [];
+  for (let i = 0; i < itemStrings.length; i++) {
+    const itemWords = wordsFrom(itemStrings[i] ?? "");
+    for (const word of itemWords) {
+      flattened.push({ word, itemIndex: i });
     }
   }
-  return out;
+  if (flattened.length < anchorWords.length) return new Set<number>();
+
+  for (let start = 0; start + anchorWords.length <= flattened.length; start++) {
+    let ok = true;
+    for (let k = 0; k < anchorWords.length; k++) {
+      if (flattened[start + k]!.word !== anchorWords[k]) {
+        ok = false;
+        break;
+      }
+    }
+    if (!ok) continue;
+    const itemIndexes = new Set<number>();
+    for (let k = 0; k < anchorWords.length; k++) {
+      itemIndexes.add(flattened[start + k]!.itemIndex);
+    }
+    return itemIndexes;
+  }
+  return new Set<number>();
 }
 
 function highlightTextChunk(
   text: string,
-  plan: { phrases: string[]; tokens: string[] }
+  shouldHighlight: boolean
 ): string {
-  if (plan.phrases.length === 0 && plan.tokens.length === 0) return escapeHtml(text);
-  const normalizedText = normalizeApostrophes(text).toLowerCase();
-  const phraseRanges = collectRanges(normalizedText, plan.phrases);
-  const tokenRanges = collectRanges(normalizedText, plan.tokens);
-  const ranges = mergeRanges([...phraseRanges, ...tokenRanges]);
-  if (ranges.length === 0) return escapeHtml(text);
-
-  let cursor = 0;
-  let html = "";
-  for (const range of ranges) {
-    if (range.start > cursor) {
-      html += escapeHtml(text.slice(cursor, range.start));
-    }
-    html += `<mark class="rounded bg-yellow-300 px-0.5 text-black">${escapeHtml(
-      text.slice(range.start, range.end)
-    )}</mark>`;
-    cursor = range.end;
-  }
-  if (cursor < text.length) {
-    html += escapeHtml(text.slice(cursor));
-  }
-  return html;
+  if (!shouldHighlight) return escapeHtml(text);
+  return `<mark class="rounded bg-yellow-300 px-0.5 text-black">${escapeHtml(text)}</mark>`;
 }
 
 export function PdfHighlightViewer({
@@ -123,8 +104,10 @@ export function PdfHighlightViewer({
   const [numPages, setNumPages] = useState(0);
   const [pageWidth, setPageWidth] = useState<number>(760);
   const [isPdfReady, setIsPdfReady] = useState(false);
+  const [matchedItemsByPage, setMatchedItemsByPage] = useState<Record<number, number[]>>({});
+  const [firstMatchedPage, setFirstMatchedPage] = useState<number | null>(null);
   const searchTerm = useMemo(() => sourceAnchorSearchTerm(sourceAnchor ?? "") ?? "", [sourceAnchor]);
-  const matchPlan = useMemo(() => buildMatchPlan(searchTerm), [searchTerm]);
+  const anchorWords = useMemo(() => wordsFrom(searchTerm), [searchTerm]);
 
   useEffect(() => {
     let cancelled = false;
@@ -153,13 +136,46 @@ export function PdfHighlightViewer({
   useEffect(() => {
     if (!searchTerm || !numPages) return;
     const t = window.setTimeout(() => {
+      const firstPage =
+        firstMatchedPage != null
+          ? wrapRef.current?.querySelector(`[data-page-number="${firstMatchedPage}"]`)
+          : null;
+      if (firstPage instanceof HTMLElement) {
+        firstPage.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
       const first = wrapRef.current?.querySelector("mark");
       if (first instanceof HTMLElement) {
         first.scrollIntoView({ behavior: "smooth", block: "center" });
       }
     }, 350);
     return () => window.clearTimeout(t);
-  }, [searchTerm, numPages]);
+  }, [searchTerm, numPages, firstMatchedPage]);
+
+  useEffect(() => {
+    setMatchedItemsByPage({});
+    setFirstMatchedPage(null);
+  }, [fileUrl, searchTerm]);
+
+  const onPageText = useCallback(
+    (pageNumber: number, payload: unknown) => {
+      if (anchorWords.length === 0) return;
+      const items = extractItems(payload);
+      const itemStrings = items.map(extractItemText);
+      const set = findMatchingItemIndexes(itemStrings, anchorWords);
+      if (set.size === 0) return;
+      const indexes = Array.from(set.values()).sort((a, b) => a - b);
+      setMatchedItemsByPage((prev) => {
+        const current = prev[pageNumber] ?? [];
+        if (current.length === indexes.length && current.every((v, i) => v === indexes[i])) {
+          return prev;
+        }
+        return { ...prev, [pageNumber]: indexes };
+      });
+      setFirstMatchedPage((prev) => (prev == null || pageNumber < prev ? pageNumber : prev));
+    },
+    [anchorWords]
+  );
 
   return (
     <div ref={wrapRef} className={className ?? "h-full overflow-auto bg-bg-2 p-3"}>
@@ -181,13 +197,21 @@ export function PdfHighlightViewer({
             {Array.from({ length: numPages }, (_, i) => i + 1).map((pageNumber) => (
               <div
                 key={pageNumber}
+                data-page-number={pageNumber}
                 className="mx-auto w-fit overflow-hidden rounded-lg border border-border bg-white shadow-sm"
               >
                 <PdfPage
                   pageNumber={pageNumber}
                   width={pageWidth}
                   renderAnnotationLayer={false}
-                  customTextRenderer={(item: { str: string }) => highlightTextChunk(item.str, matchPlan)}
+                  onGetTextSuccess={(payload: unknown) =>
+                    onPageText(pageNumber, payload)
+                  }
+                  customTextRenderer={(item: unknown) => {
+                    const itemIndex = extractItemIndex(item);
+                    const shouldHighlight = (matchedItemsByPage[pageNumber] ?? []).includes(itemIndex);
+                    return highlightTextChunk(extractItemText(item), shouldHighlight);
+                  }}
                 />
               </div>
             ))}
