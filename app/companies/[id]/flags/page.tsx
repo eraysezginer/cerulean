@@ -3,6 +3,7 @@ import { getCompanyById } from "@/data/companies";
 import { flagPolarity } from "@/data/flag-types";
 import { getFlagsForCompany } from "@/data/flags";
 import { FlagGroups } from "@/components/cerulean/FlagGroups";
+import { computeHealthScoreV1FromFlags } from "@/lib/health-score-v1";
 
 export default async function CompanyFlagsPage({
   params,
@@ -21,6 +22,7 @@ export default async function CompanyFlagsPage({
       : undefined;
   const negativeCount = flags.filter((f) => flagPolarity(f) === "negative").length;
   const positiveCount = flags.filter((f) => flagPolarity(f) === "positive").length;
+  const health = computeHealthScoreV1FromFlags(flags);
   const visibleFlags = polarity
     ? flags.filter((f) => flagPolarity(f) === polarity)
     : flags;
@@ -30,7 +32,7 @@ export default async function CompanyFlagsPage({
       <div className="mb-6 rounded-lg border border-border bg-bg-2 p-4 border-l-[3px] border-l-border pl-4">
         <h1 className="text-card-title text-text-1">
           {company.name} — {company.series ?? "Private"} · Health:{" "}
-          -/100 · {negativeCount} negative · {positiveCount} positive flag
+          {health}/100 · {negativeCount} negative · {positiveCount} positive flag
           {flags.length === 1 ? "" : "s"} (from document analysis)
         </h1>
         {polarity ? (

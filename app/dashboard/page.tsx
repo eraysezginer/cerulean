@@ -5,6 +5,7 @@ import {
   Flag,
   Sparkles,
 } from "lucide-react";
+import { getAllCompaniesList } from "@/data/companies";
 import { getPortfolioFlagsSorted } from "@/data/flags";
 import type { Confidence } from "@/data/flag-types";
 import { StatCard } from "@/components/cerulean/StatCard";
@@ -37,9 +38,17 @@ function confidenceBadge(c: Confidence) {
 }
 
 export default async function DashboardPage() {
+  const companies = await getAllCompaniesList();
   const portfolioFlags = await getPortfolioFlagsSorted();
   const highCount = portfolioFlags.filter((f) => f.confidence === "High").length;
   const positiveCount = portfolioFlags.filter((f) => f.polarity === "positive").length;
+  const now = new Date();
+  const silencedCount = companies.filter((c) => {
+    const d = new Date(`${c.lastUpdate}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return false;
+    const diffDays = Math.floor((now.getTime() - d.getTime()) / (24 * 60 * 60 * 1000));
+    return diffDays >= 14;
+  }).length;
 
   return (
     <div className="relative min-h-[calc(100vh-3.5rem)]">
@@ -57,7 +66,7 @@ export default async function DashboardPage() {
         <div className="mb-10 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <StatCard
             label="Portfolio companies"
-            value={35}
+            value={companies.length}
             icon={<Building2 strokeWidth={2} />}
             hint="Tracked in this workspace"
             accent="teal"
@@ -78,7 +87,7 @@ export default async function DashboardPage() {
           />
           <StatCard
             label="Silenced (14d+)"
-            value={2}
+            value={silencedCount}
             icon={<BellOff strokeWidth={2} />}
             hint="No investor update window"
             accent="rose"

@@ -67,7 +67,20 @@ export function CompaniesTable({ rows }: { rows: CompanyRow[] }) {
                   {defaultId === c.id ? "Default" : "Set default"}
                 </button>
               </td>
-              <td className="p-3 text-text-2">-</td>
+              <td
+                className={cn(
+                  "p-3 tabular-nums font-semibold",
+                  c.health < 35
+                    ? "text-red"
+                    : c.health < 55
+                      ? "text-amber"
+                      : c.health < 75
+                        ? "text-text-2"
+                        : "text-green"
+                )}
+              >
+                {c.health}/100
+              </td>
               <td className="p-3">
                 <div className="flex flex-wrap gap-1.5">
                   <Link

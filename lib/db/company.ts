@@ -2,6 +2,7 @@ import { rm } from "node:fs/promises";
 import path from "node:path";
 import type { ResultSetHeader, RowDataPacket } from "mysql2";
 import type { Cadence, CompanyRow } from "@/data/company-types";
+import { computeHealthScoreV1FromCounts } from "@/lib/health-score-v1";
 import getPool from "./pool";
 
 export type CompanyDbRow = RowDataPacket & {
@@ -11,6 +12,12 @@ export type CompanyDbRow = RowDataPacket & {
   flags: number;
   negativeFlags: number;
   positiveFlags: number;
+  negativeHigh: number;
+  negativeMedium: number;
+  negativeLow: number;
+  positiveHigh: number;
+  positiveMedium: number;
+  positiveLow: number;
   lastUpdate: string;
   cadence: string;
   series: string | null;
@@ -18,10 +25,27 @@ export type CompanyDbRow = RowDataPacket & {
 };
 
 export function mapCompanyRowToDomain(c: CompanyDbRow): CompanyRow {
+  const hasBreakdown =
+    c.negativeHigh != null ||
+    c.negativeMedium != null ||
+    c.negativeLow != null ||
+    c.positiveHigh != null ||
+    c.positiveMedium != null ||
+    c.positiveLow != null;
+
   return {
     id: c.id,
     name: c.legalName,
-    health: c.health,
+    health: hasBreakdown
+      ? computeHealthScoreV1FromCounts({
+          negativeHigh: Number(c.negativeHigh ?? 0),
+          negativeMedium: Number(c.negativeMedium ?? 0),
+          negativeLow: Number(c.negativeLow ?? 0),
+          positiveHigh: Number(c.positiveHigh ?? 0),
+          positiveMedium: Number(c.positiveMedium ?? 0),
+          positiveLow: Number(c.positiveLow ?? 0),
+        })
+      : Number(c.health ?? 0),
     flags: Number(c.flags ?? 0),
     negativeFlags: Number(c.negativeFlags ?? c.flags ?? 0),
     positiveFlags: Number(c.positiveFlags ?? 0),
@@ -50,6 +74,12 @@ export async function selectCompaniesOrderedByCreatedAt(): Promise<CompanyDbRow[
        COALESCE(metrics.\`flags\`, 0) AS \`flags\`,
        COALESCE(metrics.\`negativeFlags\`, 0) AS \`negativeFlags\`,
        COALESCE(metrics.\`positiveFlags\`, 0) AS \`positiveFlags\`,
+       COALESCE(metrics.\`negativeHigh\`, 0) AS \`negativeHigh\`,
+       COALESCE(metrics.\`negativeMedium\`, 0) AS \`negativeMedium\`,
+       COALESCE(metrics.\`negativeLow\`, 0) AS \`negativeLow\`,
+       COALESCE(metrics.\`positiveHigh\`, 0) AS \`positiveHigh\`,
+       COALESCE(metrics.\`positiveMedium\`, 0) AS \`positiveMedium\`,
+       COALESCE(metrics.\`positiveLow\`, 0) AS \`positiveLow\`,
        DATE_FORMAT(COALESCE(metrics.\`lastUpdateAt\`, c.\`updatedAt\`), '%Y-%m-%d') AS \`lastUpdate\`,
        c.\`cadence\`,
        c.\`series\`,
@@ -61,6 +91,12 @@ export async function selectCompaniesOrderedByCreatedAt(): Promise<CompanyDbRow[
          COUNT(*) AS \`flags\`,
          SUM(CASE WHEN jt.\`polarity\` = 'positive' THEN 1 ELSE 0 END) AS \`positiveFlags\`,
          SUM(CASE WHEN jt.\`polarity\` = 'positive' THEN 0 ELSE 1 END) AS \`negativeFlags\`,
+         SUM(CASE WHEN jt.\`polarity\` = 'positive' AND jt.\`confidence\` = 'High' THEN 1 ELSE 0 END) AS \`positiveHigh\`,
+         SUM(CASE WHEN jt.\`polarity\` = 'positive' AND jt.\`confidence\` = 'Medium' THEN 1 ELSE 0 END) AS \`positiveMedium\`,
+         SUM(CASE WHEN jt.\`polarity\` = 'positive' AND jt.\`confidence\` = 'Low' THEN 1 ELSE 0 END) AS \`positiveLow\`,
+         SUM(CASE WHEN (jt.\`polarity\` IS NULL OR jt.\`polarity\` != 'positive') AND jt.\`confidence\` = 'High' THEN 1 ELSE 0 END) AS \`negativeHigh\`,
+         SUM(CASE WHEN (jt.\`polarity\` IS NULL OR jt.\`polarity\` != 'positive') AND jt.\`confidence\` = 'Medium' THEN 1 ELSE 0 END) AS \`negativeMedium\`,
+         SUM(CASE WHEN (jt.\`polarity\` IS NULL OR jt.\`polarity\` != 'positive') AND jt.\`confidence\` = 'Low' THEN 1 ELSE 0 END) AS \`negativeLow\`,
          MAX(d.\`updatedAt\`) AS \`lastUpdateAt\`
        FROM \`DocumentIngest\` d
        JOIN JSON_TABLE(
@@ -69,7 +105,8 @@ export async function selectCompaniesOrderedByCreatedAt(): Promise<CompanyDbRow[
            ELSE JSON_ARRAY()
          END,
          '$[*]' COLUMNS (
-           \`polarity\` VARCHAR(16) PATH '$.polarity' NULL ON EMPTY NULL ON ERROR
+           \`polarity\` VARCHAR(16) PATH '$.polarity' NULL ON EMPTY NULL ON ERROR,
+           \`confidence\` VARCHAR(16) PATH '$.confidence' NULL ON EMPTY NULL ON ERROR
          )
        ) jt
        WHERE d.\`status\` = 'complete'
